@@ -1,5 +1,4 @@
-import { Badge } from "@/components/ui/badge";
-import { MessageSquare, Calendar } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { MoreLink } from "@/components/common/MoreLink";
 
 /**
@@ -70,103 +69,65 @@ const NEWS_ITEMS: NewsItem[] = [
  * - 첫 번째 아이템은 크게 강조하고, 나머지는 리스트 형태로 보여줍니다.
  */
 export function NewsSection() {
-  const [mainNews, ...otherNews] = NEWS_ITEMS;
+  const [mainNews] = NEWS_ITEMS;
 
   if (!mainNews) {
     return null;
   }
 
   return (
-    <div className="flex flex-col gap-8 sm:gap-12 w-full mx-auto">
-      {/* 섹션 헤더: 제목 및 전체보기 링크 */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="space-y-1">
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900">동아리 뉴스</h2>
-        </div>
+    <div className="flex w-full flex-col gap-6 sm:gap-8">
+      {/* 섹션 헤더 */}
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="text-2xl font-extrabold text-gray-900 sm:text-3xl">동아리 뉴스</h2>
         <MoreLink>전체보기</MoreLink>
       </div>
 
-      {/* 뉴스 콘텐츠 그리드 레이아웃 */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-        {/* 메인 뉴스 (가장 최신 항목 강조) */}
+      {/* 좌: 대표 뉴스 / 우: 뉴스 제목 리스트 */}
+      <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-2 lg:gap-10">
+        {/* 대표 뉴스 (이미지 위 제목 오버레이) */}
         <div
-          className="group cursor-pointer space-y-4 lg:col-span-2"
+          className="group relative aspect-[16/10] cursor-pointer overflow-hidden rounded-2xl bg-gray-100"
           role="button"
           tabIndex={0}
           onKeyDown={() => {}}
         >
-          <div className="overflow-hidden rounded-xl border bg-gray-100 aspect-video relative">
-            <img
-              src={mainNews.imageUrl}
-              alt={mainNews.title}
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute top-4 left-4">
-              <Badge className="bg-white/90 text-primary border-0 backdrop-blur-sm shadow-sm">
-                {mainNews.category}
-              </Badge>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center gap-3 text-sm text-gray-500">
-              <span className="flex items-center gap-1">
-                <Calendar className="h-3.5 w-3.5" />
-                {mainNews.date}
-              </span>
-              <span className="flex items-center gap-1">
-                <MessageSquare className="h-3.5 w-3.5" />
-                {mainNews.comments}
-              </span>
-            </div>
-            <h3 className="text-xl font-bold text-gray-900 group-hover:text-primary transition-colors line-clamp-2">
+          <img
+            src={mainNews.imageUrl}
+            alt={mainNews.title}
+            className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 p-5 text-white sm:p-6">
+            <p className="mb-2 text-sm text-white/80">{mainNews.date}</p>
+            <h3 className="line-clamp-2 text-xl font-bold leading-snug drop-shadow-md sm:text-2xl">
               {mainNews.title}
             </h3>
-            <p className="text-gray-600 line-clamp-2">{mainNews.description}</p>
           </div>
         </div>
 
-        {/* 서브 뉴스 리스트 */}
-        <div className="flex flex-col gap-6 lg:col-span-3">
-          {otherNews.map((item) => (
-            <div
+        {/* 뉴스 제목 리스트 */}
+        <ul className="flex h-full flex-col">
+          {NEWS_ITEMS.map((item, index) => (
+            <li
               key={item.id}
-              className="group flex gap-3 sm:gap-4 cursor-pointer"
-              role="button"
-              tabIndex={0}
-              onKeyDown={() => {}}
+              className={cn(
+                "flex flex-1 items-center",
+                index !== NEWS_ITEMS.length - 1 && "border-b border-gray-100",
+              )}
             >
-              <div className="w-24 h-20 sm:w-32 sm:h-24 shrink-0 rounded-lg overflow-hidden bg-gray-100 relative">
-                <img
-                  src={item.imageUrl}
-                  alt={item.title}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="flex flex-col justify-between py-1 grow min-w-0">
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <Badge
-                      variant="secondary"
-                      className="text-xs bg-gray-100 text-gray-600 border-0"
-                    >
-                      {item.category}
-                    </Badge>
-                    <span className="text-xs text-gray-400">{item.date}</span>
-                  </div>
-                  <h4 className="font-bold text-gray-900 group-hover:text-primary transition-colors line-clamp-2">
-                    {item.title}
-                  </h4>
-                </div>
-                <div className="flex items-center gap-3 text-xs text-gray-400">
-                  <span className="flex items-center gap-1">
-                    <MessageSquare className="h-3 w-3" />
-                    댓글 {item.comments}
-                  </span>
-                </div>
-              </div>
-            </div>
+              <button
+                type="button"
+                className="group flex w-full items-center justify-between gap-4 py-4 text-left"
+              >
+                <span className="line-clamp-1 text-gray-700 transition-colors group-hover:text-primary">
+                  {item.title}
+                </span>
+                <span className="shrink-0 text-sm text-gray-400">{item.date}</span>
+              </button>
+            </li>
           ))}
-        </div>
+        </ul>
       </div>
     </div>
   );
