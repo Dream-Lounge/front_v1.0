@@ -1,4 +1,13 @@
-import { Plus } from "lucide-react";
+import {
+  Plus,
+  Laptop,
+  Palette,
+  Music,
+  BookOpen,
+  Trophy,
+  Utensils,
+  Camera,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -64,63 +73,53 @@ const NEWS_ITEMS: NewsItem[] = [
 ];
 
 /**
+ * 인기 태그 데이터 및 아이콘
+ */
+const TAGS = [
+  { name: "프로그래밍", count: 15, icon: Laptop },
+  { name: "디자인", count: 12, icon: Palette },
+  { name: "음악", count: 18, icon: Music },
+  { name: "독서토론", count: 9, icon: BookOpen },
+  { name: "운동", count: 22, icon: Trophy },
+  { name: "요리", count: 8, icon: Utensils },
+  { name: "사진", count: 14, icon: Camera },
+  { name: "영상편집", count: 10, icon: Camera },
+  { name: "웹개발", count: 16, icon: Laptop },
+  { name: "댄스", count: 17, icon: Music },
+];
+
+/**
  * 뉴스 섹션 컴포넌트
- * - 동아리 관련 최신 뉴스 및 공지사항을 그리드 형태로 노출합니다.
- * - 첫 번째 아이템은 크게 강조하고, 나머지는 리스트 형태로 보여줍니다.
+ * - 좌측: 동아리 뉴스 제목 리스트
+ * - 우측: 인기 태그 모음
  */
 export function NewsSection() {
-  const [mainNews] = NEWS_ITEMS;
-
-  if (!mainNews) {
+  if (NEWS_ITEMS.length === 0) {
     return null;
   }
 
   return (
-    <div className="flex w-full flex-col gap-6 sm:gap-8">
-      {/* 섹션 헤더 */}
-      <div className="flex items-center justify-between gap-4">
-        <h2 className="text-2xl font-extrabold text-gray-900 sm:text-3xl">동아리 뉴스</h2>
-        <button
-          type="button"
-          aria-label="뉴스 전체보기"
-          className="flex size-8 shrink-0 items-center justify-center text-gray-900 transition-colors hover:text-gray-500"
-        >
-          <Plus className="size-6" />
-        </button>
-      </div>
-
-      {/* 좌: 대표 뉴스 / 우: 뉴스 제목 리스트 */}
-      <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-2 lg:gap-10">
-        {/* 대표 뉴스 (이미지 위 제목 오버레이) */}
-        <div
-          className="group relative aspect-[16/10] cursor-pointer overflow-hidden rounded-2xl bg-gray-100"
-          role="button"
-          tabIndex={0}
-          onKeyDown={() => {}}
-        >
-          <img
-            src={mainNews.imageUrl}
-            alt={mainNews.title}
-            className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
-          />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 p-5 text-white sm:p-6">
-            <p className="mb-2 text-sm text-white/80">{mainNews.date}</p>
-            <h3 className="line-clamp-2 text-xl font-bold leading-snug drop-shadow-md sm:text-2xl">
-              {mainNews.title}
-            </h3>
-          </div>
+    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-12">
+      {/* 좌측: 동아리 뉴스 */}
+      <div className="flex w-full flex-col gap-6 sm:gap-8">
+        {/* 섹션 헤더 */}
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-2xl font-extrabold text-gray-900 sm:text-3xl">동아리 뉴스</h2>
+          <button
+            type="button"
+            aria-label="뉴스 전체보기"
+            className="flex size-8 shrink-0 items-center justify-center text-gray-900 transition-colors hover:text-gray-500"
+          >
+            <Plus className="size-6" />
+          </button>
         </div>
 
         {/* 뉴스 제목 리스트 */}
-        <ul className="flex h-full flex-col">
+        <ul className="flex flex-col">
           {NEWS_ITEMS.map((item, index) => (
             <li
               key={item.id}
-              className={cn(
-                "flex flex-1 items-center",
-                index !== NEWS_ITEMS.length - 1 && "border-b border-gray-100",
-              )}
+              className={cn(index !== NEWS_ITEMS.length - 1 && "border-b border-gray-100")}
             >
               <button
                 type="button"
@@ -134,6 +133,29 @@ export function NewsSection() {
             </li>
           ))}
         </ul>
+      </div>
+
+      {/* 우측: 인기 태그 */}
+      <div className="flex w-full flex-col gap-6 sm:gap-8 lg:w-96">
+        {/* 섹션 헤더 */}
+        <div className="flex items-center">
+          <h2 className="text-2xl font-extrabold text-gray-900 sm:text-3xl">인기 태그</h2>
+        </div>
+
+        {/* 태그 칩 */}
+        <div className="flex flex-wrap gap-2.5">
+          {TAGS.map((tag) => (
+            <button
+              key={tag.name}
+              type="button"
+              className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3.5 py-2 shadow-sm transition-all hover:border-gray-300 hover:shadow-md"
+            >
+              <tag.icon className="size-4 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">{tag.name}</span>
+              <span className="text-xs text-gray-400">{tag.count}</span>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
