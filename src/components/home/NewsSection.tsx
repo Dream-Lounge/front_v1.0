@@ -90,8 +90,8 @@ const TAGS = [
 
 /**
  * 뉴스 섹션 컴포넌트
- * - 좌측: 동아리 뉴스 제목 리스트
- * - 우측: 인기 태그 모음
+ * - 상단: 동아리 뉴스 제목 리스트
+ * - 하단: 인기 태그 모음
  */
 export function NewsSection() {
   if (NEWS_ITEMS.length === 0) {
@@ -99,8 +99,8 @@ export function NewsSection() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-12">
-      {/* 좌측: 동아리 뉴스 */}
+    <div className="flex flex-col gap-10 sm:gap-12">
+      {/* 상단: 동아리 뉴스 */}
       <div className="flex w-full flex-col gap-6 sm:gap-8">
         {/* 섹션 헤더 */}
         <div className="flex items-center justify-between gap-4">
@@ -135,11 +135,11 @@ export function NewsSection() {
         </ul>
       </div>
 
-      {/* 우측: 인기 태그 */}
-      <div className="flex w-full flex-col gap-6 sm:gap-8 lg:w-96">
+      {/* 하단: 인기 태그 */}
+      <div className="flex w-full flex-col gap-6 sm:gap-8">
         {/* 섹션 헤더 */}
         <div className="flex items-center">
-          <h2 className="text-2xl font-extrabold text-gray-900 sm:text-3xl">인기 태그</h2>
+          <h2 className="text-2xl font-extrabold text-gray-900 sm:text-3xl">태그</h2>
         </div>
 
         {/* 태그 칩 */}
