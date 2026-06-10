@@ -54,19 +54,19 @@ export function RecruitingSection() {
     <div className="flex flex-col">
       {/* 섹션 헤더 */}
       <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-12">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4">
           <h2 className="text-2xl font-extrabold text-gray-900 sm:text-3xl">
             모집중인 동아리
           </h2>
           <button
             type="button"
-            aria-label="분과 전체보기"
+            aria-label="모집 동아리 전체보기"
             className="flex size-8 shrink-0 items-center justify-center text-gray-900 transition-colors hover:text-gray-500"
           >
             <Plus className="size-6" />
           </button>
         </div>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center">
           <h2 className="text-2xl font-extrabold text-gray-900 sm:text-3xl">
             분과별 모아보기
           </h2>
