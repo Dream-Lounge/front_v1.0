@@ -3,9 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { MoreLink } from "@/components/common/MoreLink";
 import { api, type Club } from "@/lib/api";
 import { CLUB_DIVISION_KEYS } from "@/data/clubDirectoryMeta";
 
@@ -59,7 +58,13 @@ export function RecruitingSection() {
           <h2 className="text-2xl font-extrabold text-gray-900 sm:text-3xl">
             모집중인 동아리
           </h2>
-          <MoreLink>분과보기</MoreLink>
+          <button
+            type="button"
+            aria-label="분과 전체보기"
+            className="flex size-8 shrink-0 items-center justify-center text-gray-900 transition-colors hover:text-gray-500"
+          >
+            <Plus className="size-6" />
+          </button>
         </div>
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-extrabold text-gray-900 sm:text-3xl">

@@ -1,5 +1,5 @@
+import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { MoreLink } from "@/components/common/MoreLink";
 
 /**
  * 뉴스 아이템 데이터 인터페이스
@@ -80,7 +80,13 @@ export function NewsSection() {
       {/* 섹션 헤더 */}
       <div className="flex items-center justify-between gap-4">
         <h2 className="text-2xl font-extrabold text-gray-900 sm:text-3xl">동아리 뉴스</h2>
-        <MoreLink>전체보기</MoreLink>
+        <button
+          type="button"
+          aria-label="뉴스 전체보기"
+          className="flex size-8 shrink-0 items-center justify-center text-gray-900 transition-colors hover:text-gray-500"
+        >
+          <Plus className="size-6" />
+        </button>
       </div>
 
       {/* 좌: 대표 뉴스 / 우: 뉴스 제목 리스트 */}
