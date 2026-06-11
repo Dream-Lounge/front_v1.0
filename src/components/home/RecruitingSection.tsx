@@ -3,10 +3,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api, type Club } from "@/lib/api";
 import { CLUB_DIVISION_KEYS } from "@/data/clubDirectoryMeta";
+import { formatEndDateLabel } from "@/lib/date";
 
 export function RecruitingSection() {
   const navigate = useNavigate();
@@ -61,6 +62,7 @@ export function RecruitingSection() {
           <button
             type="button"
             aria-label="모집 동아리 전체보기"
+            onClick={() => navigate("/clubs")}
             className="flex size-8 shrink-0 items-center justify-center text-gray-900 transition-colors hover:text-gray-500"
           >
             <Plus className="size-6" />
@@ -85,7 +87,7 @@ export function RecruitingSection() {
               ref={scrollRef}
               className="flex h-full items-stretch gap-3 overflow-x-auto scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
-              {recruitingClubs.map((club) => (
+              {recruitingClubs.map((club, idx) => (
                 <Card
                   key={club.id}
                   className={cn(
@@ -102,10 +104,16 @@ export function RecruitingSection() {
                   />
                   <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                   <CardContent className="relative z-10 flex h-full min-h-0 flex-col justify-between p-3.5">
-                    <div className="flex items-start justify-between">
+                    <div className="flex items-start justify-between gap-1">
                       {club.division && (
                         <Badge className="border-none bg-primary/90 px-2.5 py-0.5 text-xs text-primary-foreground backdrop-blur-sm">
                           {club.division}
+                        </Badge>
+                      )}
+                      {idx < 3 && (
+                        <Badge className="border-none bg-amber-400/90 px-2 py-0.5 text-xs text-white backdrop-blur-sm flex items-center gap-0.5">
+                          <Sparkles className="size-3" />
+                          AI추천
                         </Badge>
                       )}
                     </div>
@@ -115,7 +123,7 @@ export function RecruitingSection() {
                       </h3>
                       <p className="text-xs opacity-90 drop-shadow-sm">
                         {club.recruit_end
-                          ? `~ ${new Date(club.recruit_end).toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" })}`
+                          ? formatEndDateLabel(String(club.recruit_end))
                           : "상시모집"}
                       </p>
                     </div>
