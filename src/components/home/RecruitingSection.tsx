@@ -52,9 +52,10 @@ export function RecruitingSection() {
   const scrollNext = () => scrollRef.current?.scrollBy({ left: 360, behavior: "smooth" });
 
   return (
-    <div className="flex flex-col">
-      {/* 섹션 헤더 */}
-      <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-12">
+    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-12">
+      {/* 좌측 컬럼: 모집중인 동아리 (타이틀 + 가로 스크롤 카드) */}
+      <div className="flex min-w-0 flex-col gap-6">
+        {/* 섹션 헤더 */}
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-2xl font-extrabold text-gray-900 sm:text-3xl">
             모집중인 동아리
@@ -68,15 +69,8 @@ export function RecruitingSection() {
             <Plus className="size-6" />
           </button>
         </div>
-        <div className="flex items-center">
-          <h2 className="text-2xl font-extrabold text-gray-900 sm:text-3xl">
-            분과별 모아보기
-          </h2>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-12">
-        {/* 좌측: 가로 스크롤 동아리 카드 */}
+        {/* 가로 스크롤 동아리 카드 */}
         <div className="relative min-w-0">
           {recruitingClubs.length === 0 ? (
             <div className="flex items-center justify-center h-40 text-muted-foreground text-sm">
@@ -155,8 +149,18 @@ export function RecruitingSection() {
             </button>
           )}
         </div>
+      </div>
 
-        {/* 우측: 분과별 모아보기 */}
+      {/* 우측 컬럼: 분과별 모아보기 (타이틀 + 분과 목록) */}
+      <div className="flex flex-col gap-6">
+        {/* 섹션 헤더 */}
+        <div className="flex items-center">
+          <h2 className="text-2xl font-extrabold text-gray-900 sm:text-3xl">
+            분과별 모아보기
+          </h2>
+        </div>
+
+        {/* 분과 목록 */}
         <aside className="flex w-full shrink-0 flex-col lg:w-96">
           {divisionCounts.map((division) => (
             <button
