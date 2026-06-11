@@ -8,7 +8,20 @@ import {
   Utensils,
   Camera,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+
+/**
+ * 뉴스 카테고리별 뱃지 색상
+ */
+const NEWS_BADGE_CLASS: Record<string, string> = {
+  공지사항: "bg-blue-100 text-blue-700",
+  행사: "bg-violet-100 text-violet-700",
+  공연: "bg-rose-100 text-rose-700",
+  모집공고: "bg-orange-100 text-orange-700",
+  뉴스: "bg-emerald-100 text-emerald-700",
+  안내: "bg-gray-100 text-gray-600",
+};
 
 /**
  * 뉴스 아이템 데이터 인터페이스
@@ -125,8 +138,18 @@ export function NewsSection() {
                 type="button"
                 className="group flex w-full items-center justify-between gap-4 py-4 text-left"
               >
-                <span className="line-clamp-1 text-gray-700 transition-colors group-hover:text-primary">
-                  {item.title}
+                <span className="flex min-w-0 items-center gap-2.5">
+                  <Badge
+                    className={cn(
+                      "shrink-0 border-0 px-2 py-0.5 text-xs font-bold",
+                      NEWS_BADGE_CLASS[item.category] ?? "bg-gray-100 text-gray-600",
+                    )}
+                  >
+                    {item.category}
+                  </Badge>
+                  <span className="line-clamp-1 text-gray-700 transition-colors group-hover:text-primary">
+                    {item.title}
+                  </span>
                 </span>
                 <span className="shrink-0 text-sm text-gray-400">{item.date}</span>
               </button>
