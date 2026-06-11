@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { api, type Club } from "@/lib/api";
+import { recruitDeadlineLabel } from "@/lib/date";
 import {
   CLUB_CATEGORY_FILTERS,
   type ClubDivision,
@@ -37,9 +38,7 @@ function formatRecruitment(club: Club): { label: string; deadlineToday: boolean 
   if (diff < 0) return { label: "모집 마감", deadlineToday: false };
   if (diff === 0) return { label: "오늘까지", deadlineToday: true };
 
-  const m = end.getMonth() + 1;
-  const d = end.getDate();
-  return { label: `~${m}월 ${d}일`, deadlineToday: false };
+  return { label: recruitDeadlineLabel(end.getFullYear(), end.getMonth() + 1, end.getDate()), deadlineToday: false };
 }
 
 function mapClubToRow(club: Club): ClubRow {
@@ -292,7 +291,7 @@ function ClubCard({
             <span className="tabular-nums">{club.memberCount}명</span>
           </span>
           <span className="shrink-0 font-semibold text-primary">
-            {club.recruitmentLabel}
+            {formatRecruitmentLabel(club.recruitmentLabel)}
           </span>
         </div>
       </div>
@@ -340,7 +339,7 @@ function ClubListRow({
             {club.memberCount}명
           </span>
           <span className="font-semibold text-primary">
-            {club.recruitmentLabel}
+            {formatRecruitmentLabel(club.recruitmentLabel)}
           </span>
         </div>
       </div>
