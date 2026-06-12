@@ -8,6 +8,7 @@ import { ApplicationDrafts } from "@/pages/ApplicationDrafts";
 import { ApplicationStatus } from "@/pages/ApplicationStatus";
 import { Signup } from "@/pages/Signup";
 import { Login } from "@/pages/Login";
+import { InterestSelection } from "@/pages/InterestSelection";
 import { ProtectedRoute } from "@/components/common/ProtectedRoute";
 import { ScrollToTop } from "@/components/common/ScrollToTop";
 import { MyClubs } from "@/pages/MyClubs";
@@ -32,6 +33,9 @@ function App() {
           <Route path="/signup" element={<Signup />} />
           <Route path="/login" element={<Login />} />
         </Route>
+
+        {/* 최초 로그인 후 관심사 선택(온보딩) — 전체화면 */}
+        <Route path="/onboarding/interests" element={<InterestSelection />} />
 
         {/* 헤더/푸터 있는 일반 페이지 */}
         <Route element={<MainLayout />}>
