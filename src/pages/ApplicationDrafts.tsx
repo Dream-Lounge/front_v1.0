@@ -1,23 +1,33 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Clock, FileText, Trash2 } from "lucide-react";
-import { getClubApplicationData } from "@/data/clubs";
 import {
-  getApplicationDrafts,
-  removeApplicationDraft,
-  type ApplicationDraftListItem,
-} from "@/lib/applicationDrafts";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Clock, FileText, Trash2, Loader2 } from "lucide-react";
+import { api, type ApplicationListResponseItem } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 
-function formatSavedAt(savedAt: string | undefined): string {
-  if (!savedAt) return "저장 시간 없음";
+interface DraftItem {
+  id: string;
+  clubName: string;
+  updatedAt: string;
+}
 
-  const date = new Date(savedAt);
+function formatSavedAt(dateStr: string): string {
+  const date = new Date(dateStr);
   if (Number.isNaN(date.getTime())) return "저장 시간 없음";
-
   return new Intl.DateTimeFormat("ko-KR", {
     year: "numeric",
     month: "2-digit",
@@ -27,27 +37,13 @@ function formatSavedAt(savedAt: string | undefined): string {
   }).format(date);
 }
 
-function getDraftEditPath(draft: ApplicationDraftListItem): string {
-  if (draft.mode === "edit") return `/applications/${draft.routeId}/edit`;
-  return `/club/${draft.routeId}/apply`;
-}
-
-function getDraftClubInfo(draft: ApplicationDraftListItem) {
-  const clubId = draft.clubId || (draft.mode === "create" ? draft.routeId : undefined);
-  const clubData = clubId ? getClubApplicationData(clubId) : null;
-
-  return {
-    name: draft.clubName || clubData?.title || "동아리 지원서",
-    category: draft.category || clubData?.category || "임시저장",
-    description: clubData?.description || "작성 중인 지원서 초안입니다.",
-  };
-}
-
 export function ApplicationDrafts() {
   const { studentId } = useParams<{ studentId: string }>();
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const navigate = useNavigate();
-  const [drafts, setDrafts] = useState<ApplicationDraftListItem[]>([]);
+  const [drafts, setDrafts] = useState<DraftItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAuthLoading && isAuthenticated && user && studentId && String(user.studentId) !== studentId) {
@@ -56,13 +52,52 @@ export function ApplicationDrafts() {
   }, [studentId, user, isAuthenticated, isAuthLoading, navigate]);
 
   useEffect(() => {
-    setDrafts(getApplicationDrafts());
-  }, []);
+    if (isAuthLoading) return;
+    if (!user) {
+      setDrafts([]);
+      setIsLoading(false);
+      return;
+    }
+    if (studentId && String(user.studentId) !== studentId) return;
 
-  const handleDelete = (storageKey: string) => {
-    removeApplicationDraft(storageKey);
-    setDrafts((prev) => prev.filter((draft) => draft.storageKey !== storageKey));
+    setIsLoading(true);
+    api.getMyDrafts()
+      .then((data: ApplicationListResponseItem[]) => {
+        setDrafts(
+          data.map((item) => ({
+            id: item.id,
+            clubName: item.club_name || "동아리 지원서",
+            updatedAt: item.updated_at,
+          }))
+        );
+      })
+      .catch(() => {
+        toast.error("임시저장 목록을 불러오지 못했습니다.");
+        setDrafts([]);
+      })
+      .finally(() => setIsLoading(false));
+  }, [studentId, user, isAuthLoading]);
+
+  const handleDelete = async (id: string, clubName: string) => {
+    setDeletingId(id);
+    try {
+      await api.deleteApplication(id);
+      setDrafts((prev) => prev.filter((d) => d.id !== id));
+      toast.success(`"${clubName}" 임시저장이 삭제되었습니다.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "삭제에 실패했습니다.");
+    } finally {
+      setDeletingId(null);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="max-w-5xl mx-auto flex items-center justify-center py-20">
+        <div className="text-muted-foreground">로딩 중...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto flex flex-col gap-8">
@@ -72,58 +107,73 @@ export function ApplicationDrafts() {
 
       {drafts.length > 0 ? (
         <div className="flex flex-col gap-4">
-          {drafts.map((draft) => {
-            const clubInfo = getDraftClubInfo(draft);
-
-            return (
-              <Card key={draft.storageKey} className="shadow-sm">
-                <CardContent className="flex flex-col md:flex-row md:items-center gap-4">
-                  <div className="flex-1 min-w-0 flex flex-col gap-3">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Badge variant="outline" className="bg-blue-50 text-primary border-blue-200">
-                        {clubInfo.category}
-                      </Badge>
-                      <Badge variant="secondary">
-                        임시저장
-                      </Badge>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <h2 className="text-lg font-bold text-foreground truncate">
-                        {clubInfo.name}
-                      </h2>
-                      <p className="text-sm text-muted-foreground line-clamp-2">
-                        {clubInfo.description}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Clock className="h-4 w-4" />
-                      <span>마지막 저장: {formatSavedAt(draft.savedAt)}</span>
-                    </div>
+          {drafts.map((draft) => (
+            <Card key={draft.id} className="shadow-sm">
+              <CardContent className="flex flex-col md:flex-row md:items-center gap-4">
+                <div className="flex-1 min-w-0 flex flex-col gap-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant="secondary">임시저장</Badge>
                   </div>
-
-                  <div className="flex flex-col sm:flex-row gap-2 md:shrink-0">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => handleDelete(draft.storageKey)}
-                      className="cursor-pointer"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      삭제
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={() => navigate(getDraftEditPath(draft))}
-                      className="cursor-pointer"
-                    >
-                      <FileText className="h-4 w-4" />
-                      계속 작성
-                    </Button>
+                  <div className="flex flex-col gap-1">
+                    <h2 className="text-lg font-bold text-foreground truncate">
+                      {draft.clubName}
+                    </h2>
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Clock className="h-4 w-4" />
+                    <span>마지막 저장: {formatSavedAt(draft.updatedAt)}</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2 md:shrink-0">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="cursor-pointer text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+                        disabled={deletingId === draft.id}
+                      >
+                        {deletingId === draft.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                        삭제
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>임시저장을 삭제하시겠습니까?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          <strong>{draft.clubName}</strong>의 임시저장 내용이 삭제됩니다.
+                          삭제된 내용은 복구할 수 없습니다.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>취소</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          onClick={() => handleDelete(draft.id, draft.clubName)}
+                        >
+                          삭제
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+
+                  <Button
+                    type="button"
+                    onClick={() => navigate(`/applications/${draft.id}/edit`)}
+                    className="cursor-pointer"
+                  >
+                    <FileText className="h-4 w-4" />
+                    계속 작성
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       ) : (
         <Card>

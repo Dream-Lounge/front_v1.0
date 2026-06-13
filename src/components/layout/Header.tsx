@@ -87,13 +87,13 @@ export function Header() {
                                             지원 내역
                                         </Link>
                                         <Link
-                                            to={user ? `/users/${user.studentId}/drafts` : "/users/guest/drafts"}
+                                            to={`/users/${user?.studentId}/drafts`}
                                             className="w-full px-3 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-sm transition-colors text-left"
                                         >
                                             임시저장함
                                         </Link>
                                         <Link
-                                            to={user ? `/users/${user.studentId}/clubs` : "/users/0/clubs"}
+                                            to={`/users/${user?.studentId}/clubs`}
                                             className="w-full px-3 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-sm transition-colors text-left"
                                         >
                                             내 동아리
@@ -102,11 +102,12 @@ export function Header() {
                                             to="/admin"
                                             className="w-full px-3 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-sm transition-colors text-left"
                                         >
-                                            관리자
+                                            관리자 페이지
                                         </Link>
+                                        <Separator className="my-1" />
                                         <button
                                             onClick={logout}
-                                            className="w-full px-3 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-sm transition-colors text-left"
+                                            className="w-full px-3 py-2 text-sm font-medium text-destructive hover:bg-muted rounded-sm transition-colors text-left"
                                         >
                                             로그아웃
                                         </button>
@@ -120,28 +121,10 @@ export function Header() {
                                             로그인
                                         </Link>
                                         <Link
-                                            to={user ? `/users/${user.studentId}/applications` : "/users/guest/applications"}
+                                            to="/signup"
                                             className="w-full px-3 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-sm transition-colors text-left"
                                         >
-                                            지원 내역
-                                        </Link>
-                                        <Link
-                                            to={user ? `/users/${user.studentId}/drafts` : "/users/guest/drafts"}
-                                            className="w-full px-3 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-sm transition-colors text-left"
-                                        >
-                                            임시저장함
-                                        </Link>
-                                        <Link
-                                            to={user ? `/users/${user.studentId}/clubs` : "/users/0/clubs"}
-                                            className="w-full px-3 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-sm transition-colors text-left"
-                                        >
-                                            내 동아리
-                                        </Link>
-                                        <Link
-                                            to="/admin"
-                                            className="w-full px-3 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-sm transition-colors text-left"
-                                        >
-                                            관리자
+                                            회원가입
                                         </Link>
                                     </>
                                 )}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,8 @@ import { useAuth } from "@/hooks/useAuth";
  */
 export function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as { from?: string })?.from || "/";
   const { login } = useAuth();
 
   // 폼 필드 상태
@@ -61,7 +63,7 @@ export function Login() {
 
     try {
       await login(parseInt(studentId, 10), password);
-      navigate("/");
+      navigate(from, { replace: true });
     } catch {
       setLoginError(true);
     } finally {

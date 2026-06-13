@@ -12,6 +12,7 @@ import { ProtectedRoute } from "@/components/common/ProtectedRoute";
 import { ScrollToTop } from "@/components/common/ScrollToTop";
 import { MyClubs } from "@/pages/MyClubs";
 import { ClubCommunity } from "@/pages/ClubCommunity";
+import { PostDetail } from "@/pages/PostDetail";
 import { AdminRoute } from "@/components/common/AdminRoute";
 import { AdminPage } from "@/pages/AdminPage";
 import { ClubsPage } from "@/pages/ClubsPage";
@@ -38,22 +39,17 @@ function App() {
           <Route path="/clubs" element={<ClubsPage />} />
           <Route path="/club/:id" element={<ClubDetail />} />
           <Route path="/club/:id/community" element={<ClubCommunity />} />
-          <Route path="/users/:studentId/clubs" element={<MyClubs />} />
-          <Route element={<AdminRoute />}>
-            <Route path="/admin" element={<AdminPage />} />
-          </Route>
+          <Route path="/club/:id/community/:postId" element={<PostDetail />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/club/:id/apply" element={<ClubApplication />} />
-            <Route
-              path="/applications/:id/edit"
-              element={<ClubApplication />}
-            />
-            <Route
-              path="/applications/:id/view"
-              element={<ClubApplication />}
-            />
+            <Route path="/applications/:id/edit" element={<ClubApplication />} />
+            <Route path="/applications/:id/view" element={<ClubApplication />} />
             <Route path="/users/:studentId/drafts" element={<ApplicationDrafts />} />
             <Route path="/users/:studentId/applications" element={<ApplicationStatus />} />
+            <Route path="/users/:studentId/clubs" element={<MyClubs />} />
+          </Route>
+          <Route element={<AdminRoute />}>
+            <Route path="/admin" element={<AdminPage />} />
           </Route>
         </Route>
       </Routes>

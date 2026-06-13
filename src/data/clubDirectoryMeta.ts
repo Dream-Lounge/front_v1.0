@@ -8,6 +8,7 @@ import {
   Volleyball,
   GraduationCap,
   Palette,
+  MoreHorizontal,
 } from "lucide-react";
 
 /** 동아리 목록·필터에 쓰는 분과 키 (전체 제외) */
@@ -19,6 +20,7 @@ export const CLUB_DIVISION_KEYS = [
   "체육",
   "학술",
   "문화예술",
+  "기타",
 ] as const;
 
 export type ClubDivision = (typeof CLUB_DIVISION_KEYS)[number];
@@ -48,6 +50,7 @@ export const CLUB_CATEGORY_FILTERS: {
   { key: "체육", label: "체육", icon: Volleyball, inactiveIconClass: "text-emerald-600" },
   { key: "학술", label: "학술", icon: GraduationCap, inactiveIconClass: "text-slate-600" },
   { key: "문화예술", label: "문화예술", icon: Palette, inactiveIconClass: "text-fuchsia-600" },
+  { key: "기타", label: "기타", icon: MoreHorizontal, inactiveIconClass: "text-gray-500" },
 ];
 
 /**

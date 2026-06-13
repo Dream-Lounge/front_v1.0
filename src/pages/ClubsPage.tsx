@@ -1,59 +1,102 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Users, LayoutGrid, List } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { MOCK_CLUB_DATA, type ClubData } from "@/data/clubs";
+import { api, type Club } from "@/lib/api";
 import {
   CLUB_CATEGORY_FILTERS,
-  MOCK_CLUB_DIRECTORY_META,
-  type ClubDirectoryMeta,
   type ClubDivision,
 } from "@/data/clubDirectoryMeta";
 
 type ViewMode = "card" | "list";
 
-type ClubRow = { id: string } & ClubData & ClubDirectoryMeta;
-
-function buildClubRows(): ClubRow[] {
-  return Object.entries(MOCK_CLUB_DATA)
-    .map(([id, data]) => {
-      const meta = MOCK_CLUB_DIRECTORY_META[id];
-      if (!meta) return null;
-      return { id, ...data, ...meta };
-    })
-    .filter((row): row is ClubRow => row !== null)
-    .sort((a, b) => Number(a.id) - Number(b.id));
+interface ClubRow {
+  id: string;
+  title: string;
+  division: string;
+  memberCount: number;
+  recruitmentLabel: string;
+  deadlineToday: boolean;
+  coverImage: string | null;
+  tags: string[];
+  isRecruiting: boolean;
 }
 
-/** 카드·리스트 썸네일: 시안처럼 어두운 네이비 톤 베이스 */
+function formatRecruitment(club: Club): { label: string; deadlineToday: boolean } {
+  if (!club.is_recruiting) return { label: "모집 마감", deadlineToday: false };
+  if (!club.recruit_end) return { label: "상시모집", deadlineToday: false };
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const end = new Date(club.recruit_end);
+  end.setHours(0, 0, 0, 0);
+  const diff = Math.floor((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diff < 0) return { label: "모집 마감", deadlineToday: false };
+  if (diff === 0) return { label: "오늘까지", deadlineToday: true };
+
+  const m = end.getMonth() + 1;
+  const d = end.getDate();
+  return { label: `~${m}월 ${d}일`, deadlineToday: false };
+}
+
+function mapClubToRow(club: Club): ClubRow {
+  const { label, deadlineToday } = formatRecruitment(club);
+  return {
+    id: club.id,
+    title: club.name,
+    division: club.division || "기타",
+    memberCount: club.member_count,
+    recruitmentLabel: label,
+    deadlineToday,
+    coverImage: club.image_url,
+    tags: club.tags.map((t) => t.tag_value || t.tag_key),
+    isRecruiting: club.is_recruiting,
+  };
+}
+
 const thumbShellClass =
   "relative overflow-hidden bg-gradient-to-br from-slate-800 via-slate-800 to-slate-950";
 
 const thumbOverlayClass =
   "pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-black/15 to-transparent";
 
-/**
- * 동아리 찾기 — 분과 필터, 카드/리스트 전환, 동아리 그리드
- */
 export function ClubsPage() {
   const navigate = useNavigate();
   const [division, setDivision] = useState<"all" | ClubDivision>("all");
   const [view, setView] = useState<ViewMode>("card");
+  const [clubs, setClubs] = useState<ClubRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const allRows = useMemo(() => buildClubRows(), []);
+  useEffect(() => {
+    api.getClubs()
+      .then((data) => setClubs(data.map(mapClubToRow)))
+      .catch(() => setClubs([]))
+      .finally(() => setIsLoading(false));
+  }, []);
 
   const filtered = useMemo(() => {
-    if (division === "all") return allRows;
-    return allRows.filter((row) => row.division === division);
-  }, [allRows, division]);
+    if (division === "all") return clubs;
+    return clubs.filter((row) => row.division === division);
+  }, [clubs, division]);
 
   const activeFilterLabel =
     CLUB_CATEGORY_FILTERS.find((f) => f.key === division)?.label ?? "전체";
 
   const sectionTitle =
     division === "all" ? "전체 동아리" : `${activeFilterLabel} 동아리`;
+
+  if (isLoading) {
+    return (
+      <div className="mx-auto w-full max-w-7xl pb-16 sm:pb-20">
+        <div className="flex items-center justify-center py-20">
+          <div className="text-muted-foreground">로딩 중...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto w-full max-w-7xl pb-16 sm:pb-20">
@@ -136,7 +179,11 @@ export function ClubsPage() {
           </div>
         </div>
 
-        {view === "card" ? (
+        {filtered.length === 0 ? (
+          <div className="py-12 text-center text-muted-foreground">
+            {clubs.length === 0 ? "등록된 동아리가 없습니다." : "해당 분과의 동아리가 없습니다."}
+          </div>
+        ) : view === "card" ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
             {filtered.map((club) => (
               <ClubCard
@@ -191,9 +238,11 @@ function ClubThumb({
         </>
       )}
       <div className="absolute left-3 top-3 z-[2] flex flex-wrap items-start gap-2">
-        <Badge className="border-0 bg-primary px-2.5 py-0.5 text-xs font-semibold text-primary-foreground shadow-sm">
-          {club.division}
-        </Badge>
+        {club.division && (
+          <Badge className="border-0 bg-primary px-2.5 py-0.5 text-xs font-semibold text-primary-foreground shadow-sm">
+            {club.division}
+          </Badge>
+        )}
       </div>
       {club.deadlineToday && (
         <div className="absolute right-3 top-3 z-[2]">

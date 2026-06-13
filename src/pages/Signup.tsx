@@ -26,8 +26,6 @@ import { cn } from "@/lib/utils";
 import { validators, ERROR_MESSAGES } from "@/lib/validators";
 import { api } from "@/lib/api";
 
-/** 프로토타입: 시안에 안내된 테스트 인증번호 */
-const TEST_EMAIL_VERIFICATION_CODE = "123456";
 
 type EmailVerificationStage = "idle" | "pending" | "verified";
 
@@ -53,6 +51,8 @@ export function Signup() {
 
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [privacyRequired, setPrivacyRequired] = useState(false);
+  const [privacyOptional, setPrivacyOptional] = useState(false);
 
   const [showPassword, setShowPassword] = useState(false);
 
@@ -69,6 +69,7 @@ export function Signup() {
     passwordConfirm: boolean;
     passwordMismatch: boolean;
     emailVerification: boolean;
+    privacyConsent: boolean;
   }>({
     name: false,
     phone: false,
@@ -79,6 +80,7 @@ export function Signup() {
     passwordConfirm: false,
     passwordMismatch: false,
     emailVerification: false,
+    privacyConsent: false,
   });
 
   useEffect(() => {
@@ -108,6 +110,7 @@ export function Signup() {
       passwordMismatch: password !== passwordConfirm,
       emailVerification:
         !schoolEmailInvalid && emailStage !== "verified",
+      privacyConsent: !privacyRequired,
     };
 
     setErrors(newErrors);
@@ -128,6 +131,10 @@ export function Signup() {
         phone,
         password,
         passwordConfirm,
+        email: schoolEmail.trim(),
+        verificationCode: verifyCode.trim(),
+        privacyConsentRequired: privacyRequired,
+        privacyConsentOptional: privacyOptional,
       });
 
       navigate("/login");
@@ -190,33 +197,44 @@ export function Signup() {
     setErrors((prev) => ({ ...prev, schoolEmail: hasError }));
   };
 
-  const handleRequestVerification = () => {
+  const handleRequestVerification = async () => {
     const invalid = validators.schoolEmail(schoolEmail);
     setErrors((prev) => ({ ...prev, schoolEmail: invalid }));
     if (invalid) return;
 
-    setEmailRequestedFor(schoolEmail.trim());
-    setEmailStage("pending");
-    setVerifyCode("");
-    setVerifyCodeError(false);
-    toast.message("인증번호를 발송했습니다. (프로토타입: 실제 발송 없음)");
+    try {
+      await api.sendEmailVerification(schoolEmail.trim());
+      setEmailRequestedFor(schoolEmail.trim());
+      setEmailStage("pending");
+      setVerifyCode("");
+      setVerifyCodeError(false);
+      toast.success("인증번호를 발송했습니다.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "인증번호 발송에 실패했습니다.");
+    }
   };
 
-  const handleResend = () => {
+  const handleResend = async () => {
     if (validators.schoolEmail(schoolEmail)) {
       setErrors((prev) => ({ ...prev, schoolEmail: true }));
       return;
     }
-    toast.success("인증번호를 다시 보냈습니다. (프로토타입)");
+    try {
+      await api.sendEmailVerification(schoolEmail.trim());
+      toast.success("인증번호를 다시 발송했습니다.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "인증번호 발송에 실패했습니다.");
+    }
   };
 
-  const handleConfirmVerificationCode = () => {
-    if (verifyCode.trim() === TEST_EMAIL_VERIFICATION_CODE) {
+  const handleConfirmVerificationCode = async () => {
+    try {
+      await api.confirmEmailVerification(schoolEmail.trim(), verifyCode.trim());
       setEmailStage("verified");
       setVerifyCodeError(false);
       setErrors((prev) => ({ ...prev, emailVerification: false }));
       toast.success("이메일 인증이 완료되었습니다.");
-    } else {
+    } catch {
       setVerifyCodeError(true);
     }
   };
@@ -549,6 +567,41 @@ export function Signup() {
                   </p>
                 )}
               </Field>
+
+              <div className="space-y-2 rounded-lg border border-border/60 bg-muted/30 p-4">
+                <p className="text-sm font-medium text-foreground mb-3">개인정보 수집·이용 동의</p>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={privacyRequired}
+                    onChange={(e) => {
+                      setPrivacyRequired(e.target.checked);
+                      if (e.target.checked && errors.privacyConsent) {
+                        setErrors((prev) => ({ ...prev, privacyConsent: false }));
+                      }
+                    }}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
+                  />
+                  <span className="text-sm leading-snug">
+                    <span className="font-medium">[필수]</span> 개인정보 수집·이용에 동의합니다.
+                    <span className="ml-1 text-xs text-muted-foreground">(이름, 학번, 학과, 연락처, 이메일)</span>
+                  </span>
+                </label>
+                {errors.privacyConsent && (
+                  <p className="text-sm text-destructive pl-7">개인정보 수집·이용 동의(필수)를 체크해주세요.</p>
+                )}
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={privacyOptional}
+                    onChange={(e) => setPrivacyOptional(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
+                  />
+                  <span className="text-sm leading-snug">
+                    <span className="font-medium">[선택]</span> 마케팅·홍보 목적의 개인정보 이용에 동의합니다.
+                  </span>
+                </label>
+              </div>
 
               {apiError && (
                 <div className="bg-destructive/10 text-destructive rounded-lg p-3 text-sm">
