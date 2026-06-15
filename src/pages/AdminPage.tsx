@@ -343,6 +343,11 @@ export function AdminPage() {
           club_type: clubType || undefined,
           division: clubDivision || undefined,
           tags: tagObjects,
+          image_url: coverImageUrl || undefined,
+          activity_images: activityPhotos.length > 0 ? activityPhotos : undefined,
+          is_recruiting: isRecruiting,
+          recruit_start: recruitStart || undefined,
+          recruit_end: recruitEnd || undefined,
         });
         setPresidentClub(created);
         toast.success("동아리가 등록되었습니다.");
