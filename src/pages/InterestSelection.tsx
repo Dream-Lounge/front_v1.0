@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Header } from "@/components/layout/Header";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { isAuthenticated } from "@/lib/auth";
 import { DEFAULT_INTEREST_TAGS, saveInterests } from "@/lib/interests";
 
 /**
@@ -40,8 +41,9 @@ export function InterestSelection() {
     );
   }
 
-  // 비로그인 상태에서는 로그인 페이지로
-  if (!user) {
+  // React state 업데이트 타이밍 이슈로 user가 아직 null일 수 있으므로
+  // localStorage 토큰을 직접 확인해 비로그인 여부를 판단
+  if (!user && !isAuthenticated()) {
     return <Navigate to="/login" replace />;
   }
 
@@ -98,7 +100,7 @@ export function InterestSelection() {
   };
 
   const complete = () => {
-    saveInterests(user.studentId, [...selected]);
+    if (user) saveInterests(user.studentId, [...selected]);
     navigate("/", { replace: true });
   };
 

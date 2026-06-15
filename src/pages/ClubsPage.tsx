@@ -291,7 +291,7 @@ function ClubCard({
             <span className="tabular-nums">{club.memberCount}명</span>
           </span>
           <span className="shrink-0 font-semibold text-primary">
-            {formatRecruitmentLabel(club.recruitmentLabel)}
+            {club.recruitmentLabel}
           </span>
         </div>
       </div>
@@ -339,7 +339,7 @@ function ClubListRow({
             {club.memberCount}명
           </span>
           <span className="font-semibold text-primary">
-            {formatRecruitmentLabel(club.recruitmentLabel)}
+            {club.recruitmentLabel}
           </span>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useLocation, Link } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,17 +8,15 @@ import { LogIn, Eye, EyeOff, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { validators, ERROR_MESSAGES } from "@/lib/validators";
 import { useAuth } from "@/hooks/useAuth";
-import { hasCompletedInterests } from "@/lib/interests";
 
 /**
  * 로그인 페이지 컴포넌트
  * - 학번, 비밀번호 입력 폼
  * - 필수 필드 유효성 검사 및 로그인 실패 에러 메시지
+ * - 로그인 성공 후 navigate는 AuthLayout이 isAuthenticated 감지 시 처리
  */
 export function Login() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const from = (location.state as { from?: string })?.from || "/";
   const { login } = useAuth();
 
   // 폼 필드 상태
@@ -63,9 +61,7 @@ export function Login() {
     setLoginError(false);
 
     try {
-      const id = parseInt(studentId, 10);
-      await login(id, password);
-      navigate(hasCompletedInterests(id) ? from : "/onboarding/interests", { replace: true });
+      await login(parseInt(studentId, 10), password);
     } catch {
       setLoginError(true);
     } finally {
