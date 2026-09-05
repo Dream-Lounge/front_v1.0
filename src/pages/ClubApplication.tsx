@@ -1,551 +1,351 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { toast } from "sonner";
+import { ArrowLeft, FileText, HelpCircle, Loader2, Save, Send, Users } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Field, FieldLabel, FieldGroup } from "@/components/ui/field";
-import { DepartmentCombobox } from "@/components/common/DepartmentCombobox";
-import {
-  FileText,
-  HelpCircle,
-  Send,
-  ArrowLeft,
-  Users,
-  Loader2,
-  Save,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { NotFound } from "@/pages/error/NotFound";
 import { useAuth } from "@/hooks/useAuth";
-import { api } from "@/lib/api";
-
-interface ClubInfo {
-  title: string;
-  category: string;
-  description: string;
-}
-import { toast } from "sonner";
+import { api, type ApplicantInfoInput, type ApplicationFormResponse, type FormQuestionResponse } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 type ApplicationMode = "create" | "edit" | "view";
+type ApplicantField = "studentId" | "name" | "department" | "phone" | "grade";
+
+interface ApplicantInfo {
+  studentId: string;
+  name: string;
+  department: string;
+  phone: string;
+  grade: string;
+}
+
+function getMode(pathname: string): ApplicationMode {
+  if (pathname.endsWith("/view")) return "view";
+  if (pathname.endsWith("/edit")) return "edit";
+  return "create";
+}
+
+function parseMultiValue(value: string | undefined): string[] {
+  if (!value) return [];
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+  } catch {
+    return value.split(",").map((item) => item.trim()).filter(Boolean);
+  }
+}
 
 export function ClubApplication() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const location = useLocation();
-  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const navigate = useNavigate();
+  const { user, isLoading: isAuthLoading } = useAuth();
+  const mode = getMode(location.pathname);
 
-  const [mode, setMode] = useState<ApplicationMode>("create");
-  const [clubData, setClubData] = useState<ClubInfo | null>(null);
+  const [clubId, setClubId] = useState("");
+  const [clubName, setClubName] = useState("");
+  const [clubCategory, setClubCategory] = useState("");
+  const [clubDescription, setClubDescription] = useState("");
+  const [form, setForm] = useState<ApplicationFormResponse | null>(null);
+  const [applicantInfo, setApplicantInfo] = useState<ApplicantInfo>({
+    studentId: "",
+    name: "",
+    department: "",
+    phone: "",
+    grade: "",
+  });
+  const [applicantErrors, setApplicantErrors] = useState<Partial<Record<ApplicantField, string>>>({});
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, boolean>>({});
   const [isDataLoading, setIsDataLoading] = useState(true);
-  
-  const [name, setName] = useState("");
-  const [studentId, setStudentId] = useState("");
-  const [phone, setPhone] = useState("");
-  const [motivation, setMotivation] = useState("");
-  const [experience, setExperience] = useState("");
-  const [questions, setQuestions] = useState("");
-  const [selectedDepartment, setSelectedDepartment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [draftId, setDraftId] = useState<string | null>(null);
+
   useEffect(() => {
-    if (isAuthLoading) return;
+    if (isAuthLoading || !id) return;
+    let active = true;
 
-    let ignore = false;
-
-    const determineMode = () => {
-      if (location.pathname.endsWith("/view")) return "view";
-      if (location.pathname.endsWith("/edit")) return "edit";
-      return "create";
-    };
-
-    const currentMode = determineMode();
-    setMode(currentMode);
-
-    const loadData = async () => {
-      if (!id) return;
-      
+    const load = async () => {
       setIsDataLoading(true);
+      setSubmitError(null);
+      try {
+        let resolvedClubId = id;
+        let initialAnswers: Record<string, string> = {};
+        let initialApplicantInfo: ApplicantInfo = {
+          studentId: user?.studentId ?? "",
+          name: user?.name ?? "",
+          department: user?.department === "미입력" ? "" : (user?.department ?? ""),
+          phone: (user?.phone ?? "").replace(/\D/g, ""),
+          grade: "",
+        };
 
-      if (currentMode === "create") {
-        if (isAuthenticated && user) {
-          try {
-            const hasApplied = await api.checkApplicationStatus(id);
-            if (ignore) return;
-
-            if (hasApplied) {
-              toast.error("이미 지원서를 제출한 동아리입니다.", { id: "already-applied" });
-              navigate(`/users/${user.studentId}/applications`, { replace: true });
-              return;
-            }
-          } catch (error) {
-            console.error("Failed to check application status", error);
+        if (mode === "create") {
+          const [hasSubmitted, drafts] = await Promise.all([
+            api.checkApplicationStatus(id),
+            api.getDraftApplications(),
+          ]);
+          const existingDraft = drafts.find((draft) => draft.club_id === id);
+          if (existingDraft) {
+            toast.info("임시저장한 지원서를 불러옵니다.");
+            navigate(`/applications/${existingDraft.id}/edit`, { replace: true });
+            return;
           }
+          if (hasSubmitted) {
+            toast.error("이미 지원서를 제출한 동아리입니다.", { id: "already-applied" });
+            navigate(user ? `/users/${user.studentId}/applications` : "/", { replace: true });
+            return;
+          }
+        } else {
+          const application = mode === "edit"
+            ? await api.getDraftApplication(id)
+            : await api.getSubmittedApplication(id);
+          resolvedClubId = application.club_id ?? "";
+          initialAnswers = Object.fromEntries(
+            application.answers.map((answer) => [answer.question_id, answer.answer_text ?? ""]),
+          );
+          initialApplicantInfo = {
+            studentId: application.applicant_student_id ?? initialApplicantInfo.studentId,
+            name: application.applicant_name ?? initialApplicantInfo.name,
+            department: application.applicant_department ?? initialApplicantInfo.department,
+            phone: (application.applicant_phone ?? initialApplicantInfo.phone).replace(/\D/g, ""),
+            grade: application.applicant_grade ?? "",
+          };
         }
 
-        if (ignore) return;
-        try {
-          const club = await api.getClub(id);
-          if (!ignore) {
-            setClubData({
-              title: club.name,
-              category: club.division || "",
-              description: club.description || "동아리 지원서를 작성합니다.",
-            });
-          }
-        } catch {
-          if (!ignore) setClubData(null);
-        }
-      } else {
-        try {
-          const appData = await api.getApplication(id, currentMode === "edit");
-
-          if (!ignore) {
-            setMotivation(appData.content.motivation);
-            setExperience(appData.content.experience || "");
-            setQuestions(appData.content.questions || "");
-
-            if (appData.club_id) {
-              try {
-                const club = await api.getClub(appData.club_id);
-                if (!ignore) {
-                  setClubData({
-                    title: club.name,
-                    category: club.division || "",
-                    description: club.description || "",
-                  });
-                }
-              } catch {
-                if (!ignore) {
-                  setClubData({
-                    title: appData.club_name || "동아리",
-                    category: "",
-                    description: "",
-                  });
-                }
-              }
-            } else {
-              setClubData({
-                title: appData.club_name || "동아리",
-                category: "",
-                description: "",
-              });
-            }
-          }
-        } catch (error) {
-          console.error("Failed to load application", error);
-          if (!ignore) setSubmitError("지원서 정보를 불러오는데 실패했습니다.");
-        }
+        const [club, applicationForm] = await Promise.all([
+          api.getClub(resolvedClubId),
+          api.getClubForm(resolvedClubId),
+        ]);
+        if (!active) return;
+        setClubId(resolvedClubId);
+        setClubName(club.name);
+        setClubCategory(club.division ?? club.club_type ?? "분과");
+        setClubDescription(club.description ?? "동아리 지원서를 작성합니다.");
+        setForm(applicationForm);
+        setApplicantInfo(initialApplicantInfo);
+        setAnswers(initialAnswers);
+      } catch (error) {
+        if (active) setSubmitError(error instanceof Error ? error.message : "지원서 정보를 불러오지 못했습니다.");
+      } finally {
+        if (active) setIsDataLoading(false);
       }
-      if (!ignore) setIsDataLoading(false);
     };
 
-    loadData();
+    void load();
+    return () => { active = false; };
+  }, [id, isAuthLoading, mode, navigate, user]);
 
-    return () => {
-      ignore = true;
-    };
-  }, [id, location.pathname, isAuthLoading, isAuthenticated, user, navigate]);
+  const orderedQuestions = useMemo(
+    () => [...(form?.questions ?? [])].sort((a, b) => a.order_index - b.order_index),
+    [form],
+  );
 
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      setName(user.name);
-      setStudentId(String(user.studentId));
-      setSelectedDepartment(user.department || "");
-      setPhone(user.phone || "");
-    }
-  }, [isAuthenticated, user]);
+  const setAnswer = (questionId: string, value: string) => {
+    setAnswers((prev) => ({ ...prev, [questionId]: value }));
+    if (value.trim()) setErrors((prev) => ({ ...prev, [questionId]: false }));
+  };
 
+  const toggleMultiAnswer = (questionId: string, option: string) => {
+    const selected = parseMultiValue(answers[questionId]);
+    const next = selected.includes(option)
+      ? selected.filter((item) => item !== option)
+      : [...selected, option];
+    setAnswer(questionId, JSON.stringify(next));
+  };
 
-  const [errors, setErrors] = useState<{
-    name: boolean;
-    studentId: boolean;
-    department: boolean;
-    phone: boolean;
-    motivation: boolean;
-  }>({
-    name: false,
-    studentId: false,
-    department: false,
-    phone: false,
-    motivation: false,
+  const buildAnswers = () => orderedQuestions.map((question) => ({
+    question_id: question.id,
+    answer_text: answers[question.id] ?? "",
+  }));
+
+  const buildApplicantInfo = (): ApplicantInfoInput => ({
+    applicant_student_id: applicantInfo.studentId.trim(),
+    applicant_name: applicantInfo.name.trim(),
+    applicant_department: applicantInfo.department.trim(),
+    applicant_phone: applicantInfo.phone.trim(),
+    applicant_grade: applicantInfo.grade.trim(),
   });
 
+  const setApplicantField = (field: ApplicantField, value: string) => {
+    setApplicantInfo((previous) => ({ ...previous, [field]: value }));
+    setApplicantErrors((previous) => ({ ...previous, [field]: undefined }));
+  };
+
+  const validateApplicantInfo = () => {
+    const next: Partial<Record<ApplicantField, string>> = {};
+    if (!/^\d{10}$/.test(applicantInfo.studentId)) next.studentId = "학번은 10자리 숫자로 입력해주세요.";
+    if (!applicantInfo.name.trim()) next.name = "이름을 입력해주세요.";
+    if (!applicantInfo.department.trim()) next.department = "학과를 입력해주세요.";
+    if (!/^\d{10,11}$/.test(applicantInfo.phone)) next.phone = "전화번호는 하이픈 없이 10~11자리 숫자로 입력해주세요.";
+    if (!/^[1-6]$/.test(applicantInfo.grade)) next.grade = "학년은 1~6 사이의 숫자로 입력해주세요.";
+    setApplicantErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
+  const validate = () => {
+    const next = Object.fromEntries(orderedQuestions.map((question) => [
+      question.id,
+      question.is_required && !(answers[question.id] ?? "").trim(),
+    ]));
+    setErrors(next);
+    return !Object.values(next).some(Boolean);
+  };
+
   const handleSubmit = async () => {
-    if (mode === "view") return;
-
-    const newErrors = {
-      name: !name.trim(),
-      studentId: !studentId.trim(),
-      department: !selectedDepartment,
-      phone: !phone.trim(),
-      motivation: !motivation.trim(),
-    };
-
-    setErrors(newErrors);
-    setSubmitError(null);
-
-    const hasErrors = Object.values(newErrors).some((error) => error);
-    if (hasErrors) {
-      return;
-    }
-
-    if (!isAuthenticated) {
-      setSubmitError("로그인이 필요합니다.");
-      return;
-    }
-
-    if (!id || !clubData) {
-      setSubmitError("동아리 정보를 찾을 수 없습니다.");
-      return;
-    }
-
+    const isApplicantInfoValid = validateApplicantInfo();
+    const areAnswersValid = validate();
+    if (!id || !form || mode === "view" || !isApplicantInfoValid || !areAnswersValid) return;
     setIsSubmitting(true);
-
+    setSubmitError(null);
     try {
-      const content = {
-        motivation,
-        experience: experience || undefined,
-        questions: questions || undefined,
-      };
-
-      if (mode === "create") {
-        if (draftId) {
-          await api.updateApplication(draftId, content, false);
-        } else {
-          await api.submitMemberApplication({ clubId: id, content }, false);
-        }
-        toast.success("지원서가 성공적으로 제출되었습니다.");
-        navigate(`/club/${id}`, { state: { applicationSuccess: true } });
-      } else {
-        await api.updateApplication(id, content, false);
-        toast.success("지원서가 성공적으로 수정되었습니다.");
-        navigate(user ? `/users/${user.studentId}/applications` : "/");
-      }
+      if (mode === "create") await api.createApplication(form.id, buildAnswers(), false, buildApplicantInfo());
+      else await api.patchApplication(id, buildAnswers(), buildApplicantInfo(), false);
+      toast.success("지원서가 성공적으로 제출되었습니다.");
+      navigate(user ? `/users/${user.studentId}/applications` : `/club/${clubId}`);
     } catch (error) {
-      setSubmitError(
-        error instanceof Error ? error.message : "작업 처리에 실패했습니다."
-      );
+      setSubmitError(error instanceof Error ? error.message : "지원서 제출에 실패했습니다.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleSaveDraft = async () => {
-    if (mode === "view" || !id) return;
-
-    const content = {
-      motivation,
-      experience: experience || undefined,
-      questions: questions || undefined,
-    };
-
-    setIsSavingDraft(true);
+    if (!id || !form || mode === "view") return;
+    setIsSubmitting(true);
+    setSubmitError(null);
     try {
-      if (mode === "create") {
-        if (draftId) {
-          await api.updateApplication(draftId, content, true);
-        } else {
-          const result = await api.submitMemberApplication({ clubId: id, content }, true);
-          setDraftId(result.id);
-        }
-      } else {
-        await api.updateApplication(id, content, true);
-      }
+      const saved = mode === "create"
+        ? await api.createApplication(form.id, buildAnswers(), true, buildApplicantInfo())
+        : await api.patchApplication(id, buildAnswers(), buildApplicantInfo(), true);
       toast.success("지원서가 임시저장되었습니다.");
-    } catch {
-      toast.error("임시저장에 실패했습니다. 다시 시도해주세요.");
+      if (mode === "create") navigate(`/applications/${saved.id}/edit`, { replace: true });
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "임시저장에 실패했습니다.");
     } finally {
-      setIsSavingDraft(false);
+      setIsSubmitting(false);
     }
   };
 
-  const validateFieldOnBlur = (field: keyof typeof errors, value: string) => {
-    if (value.trim() && errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: false }));
-    }
-  };
+  if (isAuthLoading || isDataLoading) {
+    return <div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="size-8 animate-spin text-primary" /></div>;
+  }
 
-  const isLoading = isAuthLoading || isDataLoading;
-
-  if (isLoading) {
+  if (!form) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
+        <p className="font-medium text-destructive">{submitError ?? "활성화된 신청폼이 없습니다."}</p>
+        <Button variant="outline" onClick={() => navigate(-1)}>뒤로 가기</Button>
       </div>
     );
   }
 
-  if (!clubData && !submitError) {
-    return <NotFound />;
-  }
-  
-  if (submitError && !clubData) {
-      return (
-        <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-            <div className="text-destructive font-medium">{submitError}</div>
-            <Button onClick={() => navigate(-1)}>뒤로 가기</Button>
-        </div>
-      );
-  }
-
   const isReadOnly = mode === "view";
-  const isEdit = mode === "edit";
-
   return (
     <div className="min-h-screen">
-      <div className="container mx-auto px-4 max-w-4xl">
-        <Button
-          variant="outline"
-          onClick={() => {
-             if (mode === 'create') {
-                navigate(`/club/${id}`);
-             } else {
-                navigate(user ? `/users/${user.studentId}/applications` : '/');
-             }
-          }}
-          className="inline-flex items-center justify-start text-left gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors cursor-pointer"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          <span className="text-sm">
-            {mode === 'create' ? '동아리 상세로 돌아가기' : '내 지원 내역으로 돌아가기'}
-          </span>
+      <div className="container mx-auto max-w-4xl px-4">
+        <Button variant="outline" onClick={() => navigate(-1)} className="mb-6 gap-2 text-muted-foreground">
+          <ArrowLeft className="size-4" /> 이전 화면으로 돌아가기
         </Button>
-
         <div className="flex flex-col gap-8">
           <Card>
             <CardContent>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                <div className="p-3 bg-primary/10 rounded-xl">
-                  <Users className="h-8 w-8 text-primary" />
-                </div>
+              <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+                <div className="rounded-xl bg-primary/10 p-3"><Users className="size-8 text-primary" /></div>
                 <div className="flex-1">
-                  <div className="flex flex-wrap items-center gap-2 mb-1">
-                    <h2 className="text-xl font-bold">
-                      {clubData?.title || "동아리"}
-                    </h2>
-                    <Badge variant="secondary" className="text-xs">
-                      {clubData?.category || "분과"}
-                    </Badge>
+                  <div className="mb-1 flex flex-wrap items-center gap-2">
+                    <h2 className="text-xl font-bold">{clubName}</h2>
+                    <Badge variant="secondary" className="font-semibold">{clubCategory}</Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    {clubData?.description || "동아리 지원서를 작성합니다."}
-                  </p>
+                  <p className="text-sm text-muted-foreground">{clubDescription}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-3 text-lg">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <FileText className="h-5 w-5 text-primary" />
-                </div>
-                기본 정보
-              </CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-3 text-lg"><div className="rounded-lg bg-primary/10 p-2"><FileText className="size-5 text-primary" /></div>기본 정보</CardTitle></CardHeader>
             <CardContent>
-              <FieldGroup className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Field>
-                  <FieldLabel htmlFor="name" className="gap-1">
-                    이름<span className="text-destructive">*</span>
-                  </FieldLabel>
-                  <Input
-                    id="name"
-                    placeholder="홍길동"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    onBlur={() => validateFieldOnBlur("name", name)}
-                    className={cn(
-                      "bg-muted cursor-not-allowed",
-                      errors.name &&
-                        "border-destructive focus-visible:ring-destructive",
-                    )}
-                    readOnly
-                    required
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="studentId" className="gap-1">
-                    학번<span className="text-destructive">*</span>
-                  </FieldLabel>
-                  <Input
-                    id="studentId"
-                    placeholder="20251234"
-                    value={studentId}
-                    onChange={(e) => setStudentId(e.target.value)}
-                    onBlur={() => validateFieldOnBlur("studentId", studentId)}
-                    className={cn(
-                      "bg-muted cursor-not-allowed",
-                      errors.studentId &&
-                        "border-destructive focus-visible:ring-destructive",
-                    )}
-                    readOnly
-                    required
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="department" className="gap-1">
-                    학과<span className="text-destructive">*</span>
-                  </FieldLabel>
-                  {isAuthenticated || isReadOnly ? (
-                    <Input
-                      id="department"
-                      value={selectedDepartment}
-                      className="bg-muted cursor-not-allowed"
-                      readOnly
-                    />
-                  ) : (
-                    <DepartmentCombobox
-                      value={selectedDepartment}
-                      onValueChange={(value) => {
-                        setSelectedDepartment(value);
-                        if (value && errors.department) {
-                          setErrors((prev) => ({
-                            ...prev,
-                            department: false,
-                          }));
-                        }
-                      }}
-                      hasError={errors.department}
-                    />
-                  )}
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="phone" className="gap-1">
-                    전화번호<span className="text-destructive">*</span>
-                  </FieldLabel>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="010-1234-5678"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    onBlur={() => validateFieldOnBlur("phone", phone)}
-                    className={cn(
-                      "bg-muted cursor-not-allowed",
-                      errors.phone &&
-                        "border-destructive focus-visible:ring-destructive",
-                    )}
-                    readOnly
-                    required
-                  />
-                </Field>
+              <FieldGroup className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <ApplicantFieldInput label="학번" field="studentId" value={applicantInfo.studentId} error={applicantErrors.studentId} readOnly={isReadOnly} inputMode="numeric" maxLength={10} placeholder="학번 10자리" onChange={(value) => setApplicantField("studentId", value.replace(/\D/g, ""))} />
+                <ApplicantFieldInput label="이름" field="name" value={applicantInfo.name} error={applicantErrors.name} readOnly={isReadOnly} maxLength={50} placeholder="이름" onChange={(value) => setApplicantField("name", value)} />
+                <ApplicantFieldInput label="학과" field="department" value={applicantInfo.department} error={applicantErrors.department} readOnly={isReadOnly} maxLength={100} placeholder="학과" onChange={(value) => setApplicantField("department", value)} />
+                <ApplicantFieldInput label="전화번호" field="phone" value={applicantInfo.phone} error={applicantErrors.phone} readOnly={isReadOnly} inputMode="numeric" maxLength={11} placeholder="하이픈 없이 입력" onChange={(value) => setApplicantField("phone", value.replace(/\D/g, ""))} />
+                <ApplicantFieldInput label="학년" field="grade" value={applicantInfo.grade} error={applicantErrors.grade} readOnly={isReadOnly} inputMode="numeric" maxLength={1} placeholder="예: 2" onChange={(value) => setApplicantField("grade", value.replace(/\D/g, ""))} />
               </FieldGroup>
+              {!isReadOnly && <p className="mt-5 text-xs text-muted-foreground">학번은 가입 정보로 자동 입력되며, 잘못 입력한 경우 이 신청서에서 수정할 수 있습니다.</p>}
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-3 text-lg">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <HelpCircle className="h-5 w-5 text-primary" />
-                </div>
-                지원 동기
-              </CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-3 text-lg"><div className="rounded-lg bg-primary/10 p-2"><HelpCircle className="size-5 text-primary" /></div>{form.title}</CardTitle></CardHeader>
             <CardContent>
-              <FieldGroup>
-                <Field>
-                  <FieldLabel htmlFor="motivation" className="gap-1">
-                    동아리에 지원하게 된 동기를 작성해주세요.
-                    <span className="text-destructive">*</span>
-                  </FieldLabel>
-                  <Textarea
-                    id="motivation"
-                    placeholder="동아리 활동을 통해 이루고 싶은 목표, 관심 분야 등을 자유롭게 작성해주세요."
-                    className={cn(
-                      "min-h-[120px] resize-none",
-                      errors.motivation &&
-                        "border-destructive focus-visible:ring-destructive",
-                      isReadOnly && "bg-muted cursor-not-allowed"
-                    )}
-                    value={motivation}
-                    onChange={(e) => setMotivation(e.target.value)}
-                    onBlur={() => validateFieldOnBlur("motivation", motivation)}
-                    required
-                    readOnly={isReadOnly}
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="experience" className="gap-1">
-                    관련 경험이나 활동 이력이 있다면 작성해주세요.
-                  </FieldLabel>
-                  <Textarea
-                    id="experience"
-                    placeholder="프로젝트 경험, 스터디 참여, 수강 과목 등 관련 경험을 자유롭게 작성해주세요."
-                    className={cn("min-h-[120px] resize-none", isReadOnly && "bg-muted cursor-not-allowed")}
-                    value={experience}
-                    onChange={(e) => setExperience(e.target.value)}
-                    readOnly={isReadOnly}
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="questions">
-                    동아리에 궁금한 점이 있다면 작성해주세요.
-                  </FieldLabel>
-                  <Textarea
-                    id="questions"
-                    placeholder="궁금한 점을 자유롭게 작성해주세요."
-                    className={cn("min-h-[80px] resize-none", isReadOnly && "bg-muted cursor-not-allowed")}
-                    value={questions}
-                    onChange={(e) => setQuestions(e.target.value)}
-                    readOnly={isReadOnly}
-                  />
-                </Field>
-              </FieldGroup>
+              {orderedQuestions.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">등록된 질문이 없습니다.</p> : (
+                <FieldGroup>{orderedQuestions.map((question, index) => (
+                  <QuestionField key={question.id} question={question} index={index} value={answers[question.id] ?? ""} readOnly={isReadOnly} hasError={Boolean(errors[question.id])} onChange={(value) => setAnswer(question.id, value)} onToggle={(option) => toggleMultiAnswer(question.id, option)} />
+                ))}</FieldGroup>
+              )}
             </CardContent>
           </Card>
 
-          {submitError && (
-            <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm">
-              {submitError}
-            </div>
-          )}
-
+          {submitError && <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">{submitError}</div>}
           {!isReadOnly && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                size="lg"
-                className="w-full py-6 text-base font-bold shadow-lg hover:shadow-xl transition-all cursor-pointer"
-                onClick={handleSaveDraft}
-                disabled={isSubmitting || isSavingDraft}
-              >
-                {isSavingDraft ? (
-                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                ) : (
-                  <Save className="h-5 w-5 mr-2" />
-                )}
-                {isSavingDraft ? "저장 중..." : "임시저장"}
-              </Button>
-              <Button
-                size="lg"
-                className="w-full py-6 text-base font-bold shadow-lg hover:shadow-xl transition-all cursor-pointer"
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                    제출 중...
-                  </>
-                ) : (
-                  <>
-                    <Send className="h-5 w-5 mr-2" />
-                    제출하기
-                  </>
-                )}
-              </Button>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Button variant="outline" size="lg" className="w-full py-6 text-base font-bold" onClick={handleSaveDraft} disabled={isSubmitting}><Save className="mr-2 size-5" /> 임시저장</Button>
+              <Button size="lg" className="w-full py-6 text-base font-bold" onClick={handleSubmit} disabled={isSubmitting}>{isSubmitting ? <Loader2 className="mr-2 size-5 animate-spin" /> : <Send className="mr-2 size-5" />} 지원서 제출</Button>
             </div>
           )}
         </div>
       </div>
     </div>
+  );
+}
+
+function ApplicantFieldInput({ label, field, value, error, readOnly, onChange, ...inputProps }: {
+  label: string;
+  field: ApplicantField;
+  value: string;
+  error?: string;
+  readOnly: boolean;
+  onChange: (value: string) => void;
+} & Pick<React.ComponentProps<typeof Input>, "inputMode" | "maxLength" | "placeholder">) {
+  const inputId = `applicant-${field}`;
+  return (
+    <Field>
+      <FieldLabel htmlFor={inputId}>{label}{!readOnly && <span className="text-destructive">*</span>}</FieldLabel>
+      <Input id={inputId} value={value} readOnly={readOnly} onChange={(event) => onChange(event.target.value)} className={cn(readOnly && "cursor-not-allowed bg-muted", error && "border-destructive")} {...inputProps} />
+      {error && <p className="text-sm text-destructive">{error}</p>}
+    </Field>
+  );
+}
+
+function QuestionField({ question, index, value, readOnly, hasError, onChange, onToggle }: {
+  question: FormQuestionResponse;
+  index: number;
+  value: string;
+  readOnly: boolean;
+  hasError: boolean;
+  onChange: (value: string) => void;
+  onToggle: (option: string) => void;
+}) {
+  const inputId = `application-question-${question.id}`;
+  const options = question.options ?? [];
+  return (
+    <Field>
+      <FieldLabel htmlFor={inputId} className="gap-1"><span className="text-muted-foreground">{index + 1}.</span> {question.question_text}{question.is_required && <span className="text-destructive">*</span>}</FieldLabel>
+      {question.question_type === "textarea" ? (
+        <Textarea id={inputId} value={value} onChange={(event) => onChange(event.target.value)} readOnly={readOnly} className={cn("min-h-32 resize-none", readOnly && "cursor-not-allowed bg-muted", hasError && "border-destructive")} />
+      ) : question.question_type === "choice" ? (
+        <div id={inputId} className={cn("flex flex-col gap-2 rounded-lg border p-3", hasError && "border-destructive")}>{options.map((option) => <label key={option} className="flex items-center gap-2 text-sm"><input type="radio" name={inputId} value={option} checked={value === option} onChange={() => onChange(option)} disabled={readOnly} />{option}</label>)}</div>
+      ) : question.question_type === "multiselect" ? (
+        <div id={inputId} className={cn("flex flex-col gap-2 rounded-lg border p-3", hasError && "border-destructive")}>{options.map((option) => <label key={option} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={parseMultiValue(value).includes(option)} onChange={() => onToggle(option)} disabled={readOnly} />{option}</label>)}</div>
+      ) : (
+        <Input id={inputId} value={value} onChange={(event) => onChange(event.target.value)} readOnly={readOnly} className={cn(readOnly && "cursor-not-allowed bg-muted", hasError && "border-destructive")} />
+      )}
+      {hasError && <p className="text-sm text-destructive">필수 문항에 답변해주세요.</p>}
+    </Field>
   );
 }

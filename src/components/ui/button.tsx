@@ -57,4 +57,6 @@ function Button({
   )
 }
 
+// shadcn 스타일 API 호환을 위해 컴포넌트와 variant 헬퍼를 함께 내보냅니다.
+// eslint-disable-next-line react-refresh/only-export-components
 export { Button, buttonVariants }

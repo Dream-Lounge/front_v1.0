@@ -1,6 +1,6 @@
 export interface Application {
   id: string;
-  studentId: number;
+  studentId: string | number;
   clubId: string;
   clubName: string;
   clubImage: string;
@@ -9,6 +9,7 @@ export interface Application {
   rawStatus?: string;
   appliedDate: string;
   message: string;
+  adminComment?: string;
 }
 
 export const MOCK_APPLICATIONS: Application[] = [

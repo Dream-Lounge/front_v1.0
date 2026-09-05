@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Search, User } from "lucide-react";
 import { Input } from "../ui/input";
 import {
@@ -12,9 +13,8 @@ import { Separator } from "@/components/ui/separator";
 
 const NAV_ITEMS = [
     { label: "동아리 찾기", to: "/clubs" },
-    { label: "커뮤니티", to: "/community" },
-    { label: "이벤트", to: "/events" },
-    { label: "고객센터", to: "/support" },
+    { label: "Dream Lounge", to: "/about" },
+    { label: "문의하기", to: "/support" },
 ];
 
 /**
@@ -24,6 +24,14 @@ const NAV_ITEMS = [
  */
 export function Header() {
     const { user, isAuthenticated, logout } = useAuth();
+    const navigate = useNavigate();
+    const [search, setSearch] = useState("");
+
+    const handleSearch = (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        const query = search.trim();
+        navigate(query ? `/clubs?search=${encodeURIComponent(query)}` : "/clubs");
+    };
 
     return (
         <header className="w-full flex justify-center bg-background shadow-sm sticky top-0 z-50">
@@ -53,7 +61,10 @@ export function Header() {
                 {/** 검색 + 사용자 (높이 h-9로 네비와 맞춤) */}
                 <div className="shrink-0 flex items-center gap-2 sm:gap-3 h-9">
                     {/** 검색 바 (sm 이상) */}
-                    <div className="hidden sm:block w-[min(100%,14rem)] md:w-56 lg:max-w-sm">
+                    <form
+                        className="hidden sm:block w-[min(100%,14rem)] md:w-56 lg:max-w-sm"
+                        onSubmit={handleSearch}
+                    >
                         <div className="relative h-9">
                             <Search className="-translate-y-1/2 absolute top-1/2 left-3 size-4 text-muted-foreground" />
                             <Input
@@ -61,9 +72,11 @@ export function Header() {
                                 id="search-input"
                                 placeholder="동아리 검색"
                                 type="search"
+                                value={search}
+                                onChange={(event) => setSearch(event.target.value)}
                             />
                         </div>
-                    </div>
+                    </form>
 
                     {/** 사용자 메뉴 */}
                     <Popover>
@@ -87,27 +100,23 @@ export function Header() {
                                             지원 내역
                                         </Link>
                                         <Link
-                                            to={`/users/${user?.studentId}/drafts`}
+                                            to={user ? `/users/${user.studentId}/drafts` : "/users/guest/drafts"}
                                             className="w-full px-3 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-sm transition-colors text-left"
                                         >
                                             임시저장함
                                         </Link>
                                         <Link
-                                            to={`/users/${user?.studentId}/clubs`}
-                                            className="w-full px-3 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-sm transition-colors text-left"
-                                        >
-                                            내 동아리
-                                        </Link>
-                                        <Link
                                             to="/admin"
                                             className="w-full px-3 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-sm transition-colors text-left"
                                         >
-                                            관리자 페이지
+                                            관리자
                                         </Link>
-                                        <Separator className="my-1" />
                                         <button
-                                            onClick={logout}
-                                            className="w-full px-3 py-2 text-sm font-medium text-destructive hover:bg-muted rounded-sm transition-colors text-left"
+                                            onClick={() => {
+                                                logout();
+                                                navigate("/", { replace: true });
+                                            }}
+                                            className="w-full px-3 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-sm transition-colors text-left"
                                         >
                                             로그아웃
                                         </button>
@@ -121,10 +130,10 @@ export function Header() {
                                             로그인
                                         </Link>
                                         <Link
-                                            to="/signup"
+                                            to="/admin"
                                             className="w-full px-3 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-sm transition-colors text-left"
                                         >
-                                            회원가입
+                                            관리자
                                         </Link>
                                     </>
                                 )}

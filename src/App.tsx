@@ -8,15 +8,18 @@ import { ApplicationDrafts } from "@/pages/ApplicationDrafts";
 import { ApplicationStatus } from "@/pages/ApplicationStatus";
 import { Signup } from "@/pages/Signup";
 import { Login } from "@/pages/Login";
-import { InterestSelection } from "@/pages/InterestSelection";
 import { ProtectedRoute } from "@/components/common/ProtectedRoute";
 import { ScrollToTop } from "@/components/common/ScrollToTop";
 import { MyClubs } from "@/pages/MyClubs";
 import { ClubCommunity } from "@/pages/ClubCommunity";
-import { PostDetail } from "@/pages/PostDetail";
 import { AdminRoute } from "@/components/common/AdminRoute";
 import { AdminPage } from "@/pages/AdminPage";
 import { ClubsPage } from "@/pages/ClubsPage";
+import { ClubNews } from "@/pages/ClubNews";
+import { Support } from "@/pages/Support";
+import { About } from "@/pages/About";
+import { NotFound } from "@/pages/error/NotFound";
+import { FEATURES } from "@/config/features";
 
 /**
  * 앱의 메인 진입점 컴포넌트
@@ -34,27 +37,39 @@ function App() {
           <Route path="/login" element={<Login />} />
         </Route>
 
-        {/* 최초 로그인 후 관심사 선택(온보딩) — 전체화면 */}
-        <Route path="/onboarding/interests" element={<InterestSelection />} />
-
         {/* 헤더/푸터 있는 일반 페이지 */}
         <Route element={<MainLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/clubs" element={<ClubsPage />} />
+          {FEATURES.clubNews && <Route path="/news" element={<ClubNews />} />}
+          <Route path="/support" element={<Support />} />
+          <Route path="/about" element={<About />} />
           <Route path="/club/:id" element={<ClubDetail />} />
-          <Route path="/club/:id/community" element={<ClubCommunity />} />
-          <Route path="/club/:id/community/:postId" element={<PostDetail />} />
-          <Route element={<ProtectedRoute />}>
-            <Route path="/club/:id/apply" element={<ClubApplication />} />
-            <Route path="/applications/:id/edit" element={<ClubApplication />} />
-            <Route path="/applications/:id/view" element={<ClubApplication />} />
-            <Route path="/users/:studentId/drafts" element={<ApplicationDrafts />} />
-            <Route path="/users/:studentId/applications" element={<ApplicationStatus />} />
-            <Route path="/users/:studentId/clubs" element={<MyClubs />} />
-          </Route>
+          {FEATURES.clubCommunity && (
+            <Route path="/club/:id/community" element={<ClubCommunity />} />
+          )}
           <Route element={<AdminRoute />}>
             <Route path="/admin" element={<AdminPage />} />
           </Route>
+          <Route element={<ProtectedRoute />}>
+            {FEATURES.myClubs && (
+              <Route path="/users/:studentId/clubs" element={<MyClubs />} />
+            )}
+            <Route path="/club/:id/apply" element={<ClubApplication />} />
+            <Route
+              path="/applications/:id/edit"
+              element={<ClubApplication />}
+            />
+            <Route
+              path="/applications/:id/view"
+              element={<ClubApplication />}
+            />
+            <Route path="/users/:studentId/drafts" element={<ApplicationDrafts />} />
+            <Route path="/users/:studentId/applications" element={<ApplicationStatus />} />
+          </Route>
+
+          {/* 배포에서 제외된 경로 등 매칭되지 않는 경로 */}
+          <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
     </div>

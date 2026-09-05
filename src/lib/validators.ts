@@ -1,7 +1,7 @@
 export const REGEX = {
   STUDENT_ID: /^\d{10}$/,
   PHONE: /^\d{10,11}$/,
-  PASSWORD: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
+  PASSWORD: /^\d{4}$/,
   /** 청주대학교 학교 이메일 (@cju.ac.kr) */
   SCHOOL_EMAIL: /^[^\s@]+@cju\.ac\.kr$/i,
 };
@@ -9,7 +9,7 @@ export const REGEX = {
 export const ERROR_MESSAGES = {
   STUDENT_ID: "학번은 10자리 숫자로 입력해주세요.",
   PHONE: "전화번호는 하이픈 없이 10~11자리 숫자로 입력해주세요.",
-  PASSWORD: "8자 이상, 영문 대/소문자, 숫자, 특수문자를 포함해야 합니다.",
+  PASSWORD: "비밀번호는 숫자 4자리로 입력해주세요.",
   NAME: "이름을 입력해주세요.",
   DEPARTMENT: "학과를 선택해주세요.",
   PASSWORD_CONFIRM: "비밀번호 확인을 입력해주세요.",

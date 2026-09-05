@@ -13,7 +13,6 @@ import { useAuth } from "@/hooks/useAuth";
  * 로그인 페이지 컴포넌트
  * - 학번, 비밀번호 입력 폼
  * - 필수 필드 유효성 검사 및 로그인 실패 에러 메시지
- * - 로그인 성공 후 navigate는 AuthLayout이 isAuthenticated 감지 시 처리
  */
 export function Login() {
   const navigate = useNavigate();
@@ -61,7 +60,8 @@ export function Login() {
     setLoginError(false);
 
     try {
-      await login(parseInt(studentId, 10), password);
+      await login(studentId, password);
+      navigate("/");
     } catch {
       setLoginError(true);
     } finally {
@@ -112,10 +112,12 @@ export function Login() {
                 </FieldLabel>
                 <Input
                   id="studentId"
-                  placeholder="학번을 입력해주세요"
+                  inputMode="numeric"
+                  maxLength={10}
+                  placeholder="학번 10자리를 입력해주세요"
                   value={studentId}
                   onChange={(e) =>
-                    handleFieldChange("studentId", e.target.value, setStudentId)
+                    handleFieldChange("studentId", e.target.value.replace(/\D/g, ""), setStudentId)
                   }
                   onBlur={(e) => handleBlur("studentId", e.target.value)}
                   className={cn(
@@ -139,10 +141,12 @@ export function Login() {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
+                    inputMode="numeric"
+                    maxLength={4}
                     value={password}
-                    placeholder="비밀번호를 입력해주세요"
+                    placeholder="숫자 4자리를 입력해주세요"
                     onChange={(e) =>
-                      handleFieldChange("password", e.target.value, setPassword)
+                      handleFieldChange("password", e.target.value.replace(/\D/g, ""), setPassword)
                     }
                     onBlur={(e) => handleBlur("password", e.target.value)}
                     className={cn(

@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useCallback } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,110 +9,114 @@ import { useAuth } from "@/hooks/useAuth";
 import { LoginAlertDialog } from "@/components/common/LoginAlertDialog";
 import { toast } from "sonner";
 import {
+  Clock,
   MessageSquare,
   Search as SearchIcon,
 } from "lucide-react";
-import { api, type PostListItem } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
+import { api, type PostListItem } from "@/lib/api";
 
-type CommunityCategory = "전체글" | "공지사항" | "일반글";
+type CommunityCategory =
+  | "전체글"
+  | "공지사항"
+  | "자유게시판"
+  | "질문/답변"
+  | "팀모집";
 
-function categoryBadgeVariant(isNotice: boolean) {
-  if (isNotice) {
-    return { variant: "secondary" as const, className: "bg-blue-50 text-primary border-blue-200" };
+type CommunityPost = {
+  id: string;
+  category: Exclude<CommunityCategory, "전체글">;
+  title: string;
+  author: string;
+  createdAt: string; // yyyy.MM.dd
+  comments: number;
+};
+
+function mapPost(post: PostListItem): CommunityPost {
+  return {
+    id: post.id,
+    category: post.is_notice ? "공지사항" : "자유게시판",
+    title: post.title,
+    author: post.author_name,
+    createdAt: new Intl.DateTimeFormat("ko-KR").format(new Date(post.created_at)),
+    comments: post.comment_count,
+  };
+}
+
+function categoryBadgeVariant(category: CommunityPost["category"]) {
+  switch (category) {
+    case "공지사항":
+      return { variant: "secondary" as const, className: "bg-blue-50 text-primary border-blue-200 font-semibold" };
+    case "자유게시판":
+      return { variant: "outline" as const, className: "border-primary/20 text-foreground font-semibold" };
+    case "질문/답변":
+      return { variant: "outline" as const, className: "border-chart-3/40 text-foreground font-semibold" };
+    case "팀모집":
+      return { variant: "outline" as const, className: "border-chart-2/40 text-foreground font-semibold" };
+    default:
+      return { variant: "secondary" as const, className: "font-semibold" };
   }
-  return { variant: "outline" as const, className: "border-primary/20 text-foreground" };
 }
 
 export function ClubCommunity() {
   const { id: clubId } = useParams<{ id: string }>();
   const { user, isAuthenticated } = useAuth();
 
-  const [posts, setPosts] = useState<PostListItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isClubMember, setIsClubMember] = useState(false);
-  const [isPresidentOfClub, setIsPresidentOfClub] = useState(false);
+  const [postsForClub, setPostsForClub] = useState<CommunityPost[]>([]);
 
-  const [activeCategory, setActiveCategory] = useState<CommunityCategory>("전체글");
+  const [activeCategory, setActiveCategory] =
+    useState<CommunityCategory>("전체글");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const [isLoginAlertOpen, setIsLoginAlertOpen] = useState(false);
 
-  const [isWriteOpen, setIsWriteOpen] = useState(false);
-  const [newTitle, setNewTitle] = useState("");
-  const [newContent, setNewContent] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const fetchPosts = useCallback(async () => {
+  useEffect(() => {
     if (!clubId) return;
-    setIsLoading(true);
-    try {
-      const data = await api.getPosts(clubId);
-      setPosts(data);
-    } catch {
-      setPosts([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [clubId]);
-
-  useEffect(() => {
-    fetchPosts();
-  }, [fetchPosts]);
-
-  useEffect(() => {
-    if (!isAuthenticated || !user || !clubId) {
-      setIsClubMember(false);
-      setIsPresidentOfClub(false);
-      return;
-    }
-
-    const checkMembership = async () => {
-      try {
-        const myClubs = await api.getMyClubs();
-        const membership = myClubs.find(c => String(c.club_id) === String(clubId));
-        setIsClubMember(!!membership);
-        setIsPresidentOfClub(membership?.role === "president");
-      } catch {
-        setIsClubMember(false);
-        setIsPresidentOfClub(false);
-      }
-    };
-
-    checkMembership();
-  }, [isAuthenticated, user, clubId]);
+    let active = true;
+    Promise.all([
+      api.getClubPosts(clubId),
+      isAuthenticated ? api.getMyClubs() : Promise.resolve([]),
+    ]).then(([posts, clubs]) => {
+      if (!active) return;
+      setPostsForClub(posts.map(mapPost));
+      setIsClubMember(clubs.some((club) => club.club_id === clubId));
+    }).catch((error) => toast.error(error instanceof Error ? error.message : "게시글을 불러오지 못했습니다."));
+    return () => { active = false; };
+  }, [clubId, isAuthenticated, user]);
 
   const filteredPosts = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return posts
-      .filter((p) => {
-        if (activeCategory === "공지사항") return p.is_notice;
-        if (activeCategory === "일반글") return !p.is_notice;
-        return true;
-      })
+    return postsForClub
+      .filter((p) => (activeCategory === "전체글" ? true : p.category === activeCategory))
       .filter((p) => (q ? p.title.toLowerCase().includes(q) : true));
-  }, [posts, activeCategory, query]);
+  }, [postsForClub, activeCategory, query]);
 
   const totalPages = Math.max(1, Math.ceil(filteredPosts.length / pageSize));
   const safePage = Math.min(page, totalPages);
   const pagedPosts = filteredPosts.slice((safePage - 1) * pageSize, safePage * pageSize);
 
-  const counts = useMemo(() => ({
-    전체글: posts.length,
-    공지사항: posts.filter(p => p.is_notice).length,
-    일반글: posts.filter(p => !p.is_notice).length,
-  }), [posts]);
+  const countsByCategory = useMemo(() => {
+    const counts: Record<Exclude<CommunityCategory, "전체글">, number> = {
+      "공지사항": 0,
+      "자유게시판": 0,
+      "질문/답변": 0,
+      "팀모집": 0,
+    };
+    for (const p of postsForClub) counts[p.category] += 1;
+    return counts;
+  }, [postsForClub]);
 
-  const categories: CommunityCategory[] = ["전체글", "공지사항", "일반글"];
+  const categories = useMemo(() => {
+    return [
+      { key: "전체글" as const, count: postsForClub.length },
+      { key: "공지사항" as const, count: countsByCategory["공지사항"] },
+      { key: "자유게시판" as const, count: countsByCategory["자유게시판"] },
+      { key: "질문/답변" as const, count: countsByCategory["질문/답변"] },
+      { key: "팀모집" as const, count: countsByCategory["팀모집"] },
+    ];
+  }, [postsForClub.length, countsByCategory]);
 
   const handleWrite = () => {
     if (!isAuthenticated) {
@@ -123,42 +127,8 @@ export function ClubCommunity() {
       toast.error("동아리 가입 후 글쓰기를 할 수 있습니다.");
       return;
     }
-    setNewTitle("");
-    setNewContent("");
-    setIsWriteOpen(true);
+    toast.info("게시글 작성은 관리자 화면의 게시판 관리에서 이용해주세요.");
   };
-
-  const handleSubmitPost = async () => {
-    if (!clubId || !newTitle.trim() || !newContent.trim()) {
-      toast.error("제목과 내용을 입력해주세요.");
-      return;
-    }
-    setIsSubmitting(true);
-    try {
-      await api.createPost(clubId, {
-        title: newTitle.trim(),
-        content: newContent.trim(),
-        is_notice: false,
-      });
-      toast.success("게시글이 등록되었습니다.");
-      setIsWriteOpen(false);
-      fetchPosts();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "게시글 등록에 실패했습니다.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex min-w-0 gap-6">
-        <div className="flex-1 flex items-center justify-center py-20">
-          <div className="text-muted-foreground">로딩 중...</div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-w-0 gap-6">
@@ -169,7 +139,7 @@ export function ClubCommunity() {
           </div>
           <nav className="bg-white px-2.5 py-3" aria-label="커뮤니티 게시판 분류">
             <ul className="flex flex-col gap-1">
-              {categories.map((key) => {
+              {categories.map(({ key, count }) => {
                 const isActive = activeCategory === key;
                 return (
                   <li key={key}>
@@ -195,7 +165,7 @@ export function ClubCommunity() {
                             : "rounded-full text-neutral-500",
                         )}
                       >
-                        {counts[key]}
+                        {count}
                       </span>
                     </button>
                   </li>
@@ -211,9 +181,9 @@ export function ClubCommunity() {
           <CardContent className="p-0">
             <div className="p-4 sm:p-6">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-4">
-                <div className="min-w-0 space-y-1">
+                <div className="min-w-0">
                   <h1 className="text-xl font-bold text-foreground">
-                    {activeCategory}
+                    {activeCategory === "전체글" ? "전체글" : activeCategory}
                   </h1>
                 </div>
 
@@ -234,7 +204,7 @@ export function ClubCommunity() {
                     onClick={handleWrite}
                     className="h-10 w-full shrink-0 sm:w-auto"
                     variant="default"
-                    disabled={isAuthenticated && !isClubMember}
+                    disabled={!isClubMember && isAuthenticated}
                   >
                     글쓰기
                   </Button>
@@ -251,39 +221,34 @@ export function ClubCommunity() {
                 <>
                   <ul className="flex flex-col gap-3 lg:hidden">
                     {pagedPosts.map((p) => {
-                      const { variant, className } = categoryBadgeVariant(p.is_notice);
+                      const { variant, className } = categoryBadgeVariant(p.category);
                       return (
                         <li
                           key={p.id}
                           className="rounded-lg border border-border bg-card/40 px-4 py-3 transition-colors hover:bg-muted/25"
                         >
                           <div className="flex flex-wrap items-center gap-2 gap-y-2">
-                            <span className="text-xs tabular-nums text-muted-foreground">
-                              {p.id}
-                            </span>
                             <Badge variant={variant} className={className}>
-                              {p.is_notice ? "공지사항" : "일반글"}
+                              {p.category}
                             </Badge>
                           </div>
                           <Link
-                            to={`/club/${clubId}/community/${p.id}`}
+                            to="#"
                             className="mt-2 block min-w-0 break-words text-left text-sm font-medium leading-snug hover:underline"
+                            onClick={(e) => e.preventDefault()}
                           >
                             {p.title}
                           </Link>
                           <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+                            <span className="whitespace-nowrap">{p.author}</span>
+                            <span className="whitespace-nowrap">{p.createdAt}</span>
                             <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                              {p.author_name}
-                              {p.is_author_president && (
-                                <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">관리자</span>
-                              )}
-                            </span>
-                            <span className="whitespace-nowrap">
-                              {p.created_at ? new Date(p.created_at).toLocaleDateString("ko-KR").replace(/\. /g, ".").replace(/\.$/, "") : ""}
+                              <Clock className="size-3.5 shrink-0" aria-hidden />
+                              조회 —
                             </span>
                             <span className="inline-flex items-center gap-1 whitespace-nowrap">
                               <MessageSquare className="size-3.5 shrink-0" aria-hidden />
-                              댓글 {p.comment_count ?? 0}
+                              댓글 {p.comments}
                             </span>
                           </div>
                         </li>
@@ -301,30 +266,34 @@ export function ClubCommunity() {
                             <th className="min-w-0 px-2 py-3 text-left font-medium">제목</th>
                             <th className="w-24 px-2 py-3 text-center font-medium">작성자</th>
                             <th className="w-28 px-2 py-3 text-center font-medium">작성일</th>
+                            <th className="w-16 px-1 py-3 text-center font-medium">조회</th>
                             <th className="w-16 px-1 py-3 text-center font-medium">댓글</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {pagedPosts.map((p, idx) => {
-                            const { variant, className } = categoryBadgeVariant(p.is_notice);
-                            const rowNumber = (safePage - 1) * pageSize + idx + 1;
+                          {pagedPosts.map((p, index) => {
+                            const { variant, className } = categoryBadgeVariant(p.category);
                             return (
                               <tr key={p.id} className="border-t hover:bg-muted/30">
                                 <td className="px-2 py-3.5 text-center text-xs text-muted-foreground">
-                                  {rowNumber}
+                                  {(safePage - 1) * pageSize + index + 1}
                                 </td>
                                 <td className="px-2 py-3.5 align-top">
                                   <Badge
                                     variant={variant}
                                     className={cn(className, "max-w-full truncate align-bottom")}
                                   >
-                                    {p.is_notice ? "공지사항" : "일반글"}
+                                    {p.category}
                                   </Badge>
                                 </td>
                                 <td className="min-w-0 px-2 py-3.5">
                                   <Link
-                                    to={`/club/${clubId}/community/${p.id}`}
+                                    to="#"
                                     className="flex min-w-0 items-start gap-2 hover:underline"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      void 0;
+                                    }}
                                   >
                                     <span className="min-w-0 break-words font-medium leading-snug">
                                       {p.title}
@@ -332,18 +301,21 @@ export function ClubCommunity() {
                                   </Link>
                                 </td>
                                 <td className="px-2 py-3.5 text-center text-xs text-muted-foreground">
-                                  <span className="line-clamp-2 break-words">{p.author_name}</span>
-                                  {p.is_author_president && (
-                                    <span className="mt-0.5 block rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">관리자</span>
-                                  )}
+                                  <span className="line-clamp-2 break-words">{p.author}</span>
                                 </td>
                                 <td className="whitespace-nowrap px-2 py-3.5 text-center text-xs text-muted-foreground">
-                                  {p.created_at ? new Date(p.created_at).toLocaleDateString("ko-KR").replace(/\. /g, ".").replace(/\.$/, "") : ""}
+                                  {p.createdAt}
+                                </td>
+                                <td className="px-1 py-3.5 text-center text-xs text-muted-foreground">
+                                  <span className="inline-flex items-center justify-center gap-1">
+                                    <Clock className="size-3.5 shrink-0" aria-hidden />
+                                    —
+                                  </span>
                                 </td>
                                 <td className="px-1 py-3.5 text-center text-xs text-muted-foreground">
                                   <span className="inline-flex items-center justify-center gap-1">
                                     <MessageSquare className="size-3.5 shrink-0" aria-hidden />
-                                    {p.comment_count ?? 0}
+                                    {p.comments}
                                   </span>
                                 </td>
                               </tr>
@@ -398,40 +370,7 @@ export function ClubCommunity() {
         onOpenChange={setIsLoginAlertOpen}
         reason="커뮤니티 글쓰기를 위해서는 로그인이 필요합니다."
       />
-
-      <Dialog open={isWriteOpen} onOpenChange={setIsWriteOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>게시글 작성</DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col gap-3 py-2">
-            <Input
-              placeholder="제목을 입력해주세요"
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-            />
-            <Textarea
-              placeholder="내용을 입력해주세요"
-              value={newContent}
-              onChange={(e) => setNewContent(e.target.value)}
-              className="min-h-[160px] resize-none"
-            />
-            {isPresidentOfClub && (
-              <p className="text-xs text-muted-foreground">
-                회장 권한으로 공지로 등록하려면 게시 후 관리자 페이지에서 설정할 수 있습니다.
-              </p>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsWriteOpen(false)} disabled={isSubmitting}>
-              취소
-            </Button>
-            <Button onClick={handleSubmitPost} disabled={isSubmitting}>
-              {isSubmitting ? "등록 중..." : "등록"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
+
