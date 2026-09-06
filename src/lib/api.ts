@@ -76,6 +76,7 @@ export interface ClubResponse {
   id: string;
   name: string;
   club_type: string | null;
+  tagline: string | null;
   description: string | null;
   contact_email: string | null;
   contact_phone: string | null;
@@ -83,6 +84,11 @@ export interface ClubResponse {
   contact_links: ClubContactLink[];
   image_url: string | null;
   activity_images: string[];
+  activity_image_details: Array<{
+    image_url: string;
+    caption: string | null;
+    order_index: number;
+  }>;
   division: string | null;
   field: string | null;
   activity_purpose: string | null;
@@ -144,6 +150,7 @@ export interface ActiveClubItem {
 export interface ClubWriteRequest {
   name?: string;
   club_type?: string | null;
+  tagline?: string | null;
   description?: string | null;
   contact_email?: string | null;
   contact_phone?: string | null;
@@ -151,6 +158,7 @@ export interface ClubWriteRequest {
   contact_links?: ClubContactLink[];
   image_url?: string | null;
   activity_images?: string[];
+  activity_image_details?: Array<{ image_url: string; caption: string | null }>;
   division?: string | null;
   field?: string | null;
   atmosphere?: string | null;

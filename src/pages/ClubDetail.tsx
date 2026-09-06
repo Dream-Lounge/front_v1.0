@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { mapClubResponse, type ClubData } from "@/data/clubs";
+import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
 import { NotFound } from "@/pages/error/NotFound";
 
@@ -12,6 +13,7 @@ import { NotFound } from "@/pages/error/NotFound";
 export function ClubDetail() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const { managedClubs, isLoading: isAuthLoading } = useAuth();
   const [clubData, setClubData] = useState<ClubData | null | undefined>(undefined);
 
   useEffect(() => {
@@ -30,6 +32,7 @@ export function ClubDetail() {
   if (!clubData) return <NotFound />;
 
   const isRecruiting = clubData.recruitment.status === "모집중";
+  const isOwnClub = managedClubs.some((club) => club.club_id === id && club.role === "president");
 
   return (
     <div className="container mx-auto flex w-full max-w-5xl flex-col gap-8 pb-20">
@@ -56,8 +59,12 @@ export function ClubDetail() {
           <aside className="space-y-5 pt-2">
           <Card className="border-border shadow-sm">
             <CardContent className="pt-6">
-              <Button onClick={() => navigate(`/club/${id}/apply`)} disabled={!isRecruiting} className="w-full py-6 font-bold">
-                {isRecruiting ? "지원하기" : "모집이 마감되었습니다"}
+              <Button
+                onClick={() => navigate(`/club/${id}/apply`)}
+                disabled={!isRecruiting || isOwnClub || isAuthLoading}
+                className="w-full py-6 font-bold"
+              >
+                {isOwnClub ? "내 동아리에는 지원할 수 없습니다" : isRecruiting ? "지원하기" : "모집이 마감되었습니다"}
               </Button>
             </CardContent>
           </Card>

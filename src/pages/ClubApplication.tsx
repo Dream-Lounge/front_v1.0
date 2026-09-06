@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { ArrowLeft, FileText, HelpCircle, Loader2, Save, Send, Users } from "lucide-react";
+import { ArrowLeft, Check, FileText, HelpCircle, Loader2, Save, Send, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -77,7 +77,9 @@ export function ClubApplication() {
         let initialAnswers: Record<string, string> = {};
         let initialApplicantInfo: ApplicantInfo = {
           studentId: user?.studentId ?? "",
-          name: user?.name ?? "",
+          // 간편가입은 별도 이름을 받지 않아 프로필 이름에 학번이 들어갈
+          // 수 있다. 지원서에서는 실제 이름을 직접 입력하도록 비워 둔다.
+          name: user?.name && user.name !== user.studentId ? user.name : "",
           department: user?.department === "미입력" ? "" : (user?.department ?? ""),
           phone: (user?.phone ?? "").replace(/\D/g, ""),
           grade: "",
@@ -218,11 +220,15 @@ export function ClubApplication() {
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      const saved = mode === "create"
-        ? await api.createApplication(form.id, buildAnswers(), true, buildApplicantInfo())
-        : await api.patchApplication(id, buildAnswers(), buildApplicantInfo(), true);
+      if (mode === "create") {
+        await api.createApplication(form.id, buildAnswers(), true, buildApplicantInfo());
+      } else {
+        await api.patchApplication(id, buildAnswers(), buildApplicantInfo(), true);
+      }
+      setApplicantErrors({});
+      setErrors({});
       toast.success("지원서가 임시저장되었습니다.");
-      if (mode === "create") navigate(`/applications/${saved.id}/edit`, { replace: true });
+      navigate(user ? `/users/${user.studentId}/drafts` : "/", { replace: true });
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "임시저장에 실패했습니다.");
     } finally {
@@ -339,9 +345,27 @@ function QuestionField({ question, index, value, readOnly, hasError, onChange, o
       {question.question_type === "textarea" ? (
         <Textarea id={inputId} value={value} onChange={(event) => onChange(event.target.value)} readOnly={readOnly} className={cn("min-h-32 resize-none", readOnly && "cursor-not-allowed bg-muted", hasError && "border-destructive")} />
       ) : question.question_type === "choice" ? (
-        <div id={inputId} className={cn("flex flex-col gap-2 rounded-lg border p-3", hasError && "border-destructive")}>{options.map((option) => <label key={option} className="flex items-center gap-2 text-sm"><input type="radio" name={inputId} value={option} checked={value === option} onChange={() => onChange(option)} disabled={readOnly} />{option}</label>)}</div>
+        <div id={inputId} className={cn("flex flex-col gap-2 rounded-lg border p-3", hasError && "border-destructive")}>{options.map((option) => {
+          const selected = value === option;
+          return <label key={option} className={cn("flex items-center gap-2 px-1 py-1 text-sm", readOnly ? "cursor-default" : "cursor-pointer")}>
+            <input className="sr-only" type="radio" name={inputId} value={option} checked={selected} onChange={() => onChange(option)} disabled={readOnly} />
+            <span aria-hidden className={cn("flex size-4 shrink-0 items-center justify-center rounded-full border", selected ? "border-primary" : "border-input bg-background")}>
+              {selected && <span className="size-2 rounded-full bg-primary" />}
+            </span>
+            {option}
+          </label>;
+        })}</div>
       ) : question.question_type === "multiselect" ? (
-        <div id={inputId} className={cn("flex flex-col gap-2 rounded-lg border p-3", hasError && "border-destructive")}>{options.map((option) => <label key={option} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={parseMultiValue(value).includes(option)} onChange={() => onToggle(option)} disabled={readOnly} />{option}</label>)}</div>
+        <div id={inputId} className={cn("flex flex-col gap-2 rounded-lg border p-3", hasError && "border-destructive")}>{options.map((option) => {
+          const selected = parseMultiValue(value).includes(option);
+          return <label key={option} className={cn("flex items-center gap-2 px-1 py-1 text-sm", readOnly ? "cursor-default" : "cursor-pointer")}>
+            <input className="sr-only" type="checkbox" checked={selected} onChange={() => onToggle(option)} disabled={readOnly} />
+            <span aria-hidden className={cn("flex size-4 shrink-0 items-center justify-center rounded border", selected ? "border-primary bg-primary text-primary-foreground" : "border-input bg-background")}>
+              {selected && <Check className="size-3" strokeWidth={3} />}
+            </span>
+            {option}
+          </label>;
+        })}</div>
       ) : (
         <Input id={inputId} value={value} onChange={(event) => onChange(event.target.value)} readOnly={readOnly} className={cn(readOnly && "cursor-not-allowed bg-muted", hasError && "border-destructive")} />
       )}

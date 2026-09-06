@@ -39,14 +39,22 @@ export function mapClubResponse(club: ClubResponse): ClubData {
     title: club.name,
     category: club.division || club.club_type || "기타",
     tags: club.tags.map((tag) => `#${tag.tag_value.replace(/^#/, "")}`),
-    description: club.description || `${club.name} 동아리입니다.`,
+    description: club.tagline || club.description || `${club.name} 동아리입니다.`,
     longDescription: club.description || `${club.name} 활동을 소개합니다.`,
     coverImage: club.image_url ?? undefined,
-    activities: club.activity_images.map((image, index) => ({
-      id: index + 1,
-      title: `${club.name} 활동 ${index + 1}`,
-      image,
-    })),
+    activities: club.activity_image_details?.length
+      ? [...club.activity_image_details]
+          .sort((a, b) => a.order_index - b.order_index)
+          .map((item, index) => ({
+            id: index + 1,
+            title: item.caption || `${club.name} 활동 ${index + 1}`,
+            image: item.image_url,
+          }))
+      : club.activity_images.map((image, index) => ({
+          id: index + 1,
+          title: `${club.name} 활동 ${index + 1}`,
+          image,
+        })),
     contacts: club.contact_links?.length
       ? club.contact_links
       : [

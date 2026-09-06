@@ -122,20 +122,12 @@ export function Header() {
                                         </button>
                                     </>
                                 ) : (
-                                    <>
-                                        <Link
-                                            to="/login"
-                                            className="w-full px-3 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-sm transition-colors text-left"
-                                        >
-                                            로그인
-                                        </Link>
-                                        <Link
-                                            to="/admin"
-                                            className="w-full px-3 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-sm transition-colors text-left"
-                                        >
-                                            관리자
-                                        </Link>
-                                    </>
+                                    <Link
+                                        to="/login"
+                                        className="w-full px-3 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-sm transition-colors text-left"
+                                    >
+                                        로그인
+                                    </Link>
                                 )}
                             </div>
                         </PopoverContent>
