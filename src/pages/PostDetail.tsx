@@ -7,7 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { api, type PostDetail as PostDetailType, type ActiveClubItem } from "@/lib/api";
+import { api, type PostDetailResponse, type ActiveClubItem } from "@/lib/api";
 import { toast } from "sonner";
 
 export function PostDetail() {
@@ -15,7 +15,7 @@ export function PostDetail() {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
 
-  const [post, setPost] = useState<PostDetailType | null>(null);
+  const [post, setPost] = useState<PostDetailResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [membership, setMembership] = useState<ActiveClubItem | null>(null);
 
@@ -27,7 +27,7 @@ export function PostDetail() {
     if (!clubId || !postId) return;
     setIsLoading(true);
     try {
-      const data = await api.getPost(clubId, postId);
+      const data = await api.getClubPost(clubId, postId);
       setPost(data);
     } catch {
       toast.error("게시글을 불러오는데 실패했습니다.");
@@ -67,7 +67,7 @@ export function PostDetail() {
     }
   };
 
-  const handleDeleteComment = async (commentId: number) => {
+  const handleDeleteComment = async (commentId: string) => {
     if (!clubId || !postId) return;
     try {
       await api.deleteComment(clubId, postId, commentId);
@@ -82,7 +82,7 @@ export function PostDetail() {
     if (!clubId || !postId) return;
     if (!confirm("게시글을 삭제하시겠습니까?")) return;
     try {
-      await api.deletePost(clubId, postId);
+      await api.deleteClubPost(clubId, postId);
       toast.success("게시글이 삭제되었습니다.");
       navigate(`/club/${clubId}/community`, { replace: true });
     } catch (error) {
@@ -95,7 +95,7 @@ export function PostDetail() {
     membership?.role === "president"
   );
 
-  const canDeleteComment = (commentAuthorId: number) => {
+  const canDeleteComment = (commentAuthorId: string) => {
     if (!user) return false;
     return commentAuthorId === user.id || membership?.role === "president";
   };

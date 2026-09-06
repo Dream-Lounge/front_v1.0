@@ -59,10 +59,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setManagedClubs(clubs.filter((club) => club.role === "president"));
   }, []);
 
-  const logout = useCallback(() => {
-    api.logout();
-    setUser(null);
-    setManagedClubs([]);
+  const logout = useCallback(async () => {
+    try {
+      await api.logout();
+    } finally {
+      setUser(null);
+      setManagedClubs([]);
+    }
   }, []);
 
   const handleSessionExpired = useCallback(() => {

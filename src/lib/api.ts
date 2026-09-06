@@ -48,6 +48,14 @@ export interface ApiError {
   detail: string | Array<{ loc: Array<string | number>; msg: string; type: string }>;
 }
 
+export interface PageResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  size: number;
+  pages: number;
+}
+
 export interface SignupRequest {
   studentId: string;
   password: string;
@@ -469,8 +477,16 @@ class ApiClient {
     return { ...response, user };
   }
 
-  logout(): void {
-    this.clearTokens();
+  async logout(): Promise<void> {
+    const refreshToken = this.getRefreshToken();
+    try {
+      await this.request<void>("/auth/logout", {
+        method: "POST",
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+    } finally {
+      this.clearTokens();
+    }
   }
 
   async getCurrentUser(): Promise<User> {
@@ -633,8 +649,17 @@ class ApiClient {
     return this.request<void>(`/applications/${encodeURIComponent(applicationId)}`, { method: "DELETE" });
   }
 
-  getClubApplications(clubId: string): Promise<AdminApplicationListItem[]> {
-    return this.request<AdminApplicationListItem[]>(`/clubs/${encodeURIComponent(clubId)}/applications`);
+  getClubApplications(
+    clubId: string,
+    page = 1,
+    size = 20,
+    query = "",
+  ): Promise<PageResponse<AdminApplicationListItem>> {
+    const params = new URLSearchParams({ page: String(page), size: String(size) });
+    if (query.trim()) params.set("q", query.trim());
+    return this.request<PageResponse<AdminApplicationListItem>>(
+      `/clubs/${encodeURIComponent(clubId)}/applications?${params.toString()}`,
+    );
   }
 
   getClubApplication(clubId: string, applicationId: string): Promise<AdminApplicationDetail> {
@@ -665,8 +690,11 @@ class ApiClient {
     );
   }
 
-  getClubMembers(clubId: string): Promise<ClubMember[]> {
-    return this.request<ClubMember[]>(`/clubs/${encodeURIComponent(clubId)}/members`);
+  getClubMembers(clubId: string, page = 1, size = 20): Promise<PageResponse<ClubMember>> {
+    const params = new URLSearchParams({ page: String(page), size: String(size) });
+    return this.request<PageResponse<ClubMember>>(
+      `/clubs/${encodeURIComponent(clubId)}/members?${params.toString()}`,
+    );
   }
 
   withdrawClubMember(clubId: string, userId: string): Promise<void> {

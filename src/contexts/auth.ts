@@ -9,7 +9,7 @@ export interface AuthContextType {
   managedClubs: ActiveClubItem[];
   isClubAdmin: boolean;
   login: (studentId: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   handleSessionExpired: () => void;
 }
 

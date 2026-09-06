@@ -279,6 +279,8 @@ export function AdminPage() {
   const [applicants, setApplicants] = useState<SubmittedApplication[]>([]);
   const [applicantQuery, setApplicantQuery] = useState("");
   const [applicantPage, setApplicantPage] = useState(1);
+  const [applicantTotal, setApplicantTotal] = useState(0);
+  const [applicantTotalPages, setApplicantTotalPages] = useState(1);
   const [selectedApplication, setSelectedApplication] = useState<AdminApplicationDetail | null>(null);
   const [reviewComment, setReviewComment] = useState("");
   const [communityPosts, setCommunityPosts] = useState<PostListItem[]>([]);
@@ -314,9 +316,8 @@ export function AdminPage() {
     let active = true;
     const load = async () => {
       try {
-        const [club, applicationRows, posts] = await Promise.all([
+        const [club, posts] = await Promise.all([
           api.getClub(selectedClubId),
-          api.getClubApplications(selectedClubId),
           api.getClubPosts(selectedClubId),
         ]);
         if (!active) return;
@@ -336,14 +337,6 @@ export function AdminPage() {
         setContactLinks(savedContactLinks.map((link, index) => ({ ...link, id: index + 1 })));
         setTags(club.tags.map((tag) => `#${tag.tag_value.replace(/^#/, "")}`));
         setActivityPhotos(club.activity_images.map((url, index) => ({ id: index + 1, caption: "", url })));
-        setApplicants(applicationRows.map((row) => ({
-          id: row.id,
-          name: row.user_name,
-          studentId: row.user_student_id,
-          major: row.applicant_department ?? "—",
-          submittedAt: row.submitted_at ? new Intl.DateTimeFormat("ko-KR").format(new Date(row.submitted_at)) : "—",
-          status: statusFromApi(row.status),
-        })));
         setCommunityPosts(posts);
         setSelectedPostIds([]);
         try {
@@ -373,23 +366,39 @@ export function AdminPage() {
     return () => { active = false; };
   }, [selectedClubId]);
 
-  const filteredApplicants = useMemo(() => {
-    const query = applicantQuery.trim().toLowerCase();
-    if (!query) return applicants;
-    return applicants.filter((applicant) =>
-      `${applicant.name} ${applicant.studentId} ${applicant.major}`.toLowerCase().includes(query),
-    );
-  }, [applicantQuery, applicants]);
+  useEffect(() => {
+    if (!selectedClubId) return;
+    let active = true;
+    const timer = window.setTimeout(() => {
+      api.getClubApplications(
+        selectedClubId,
+        applicantPage,
+        APPLICANTS_PER_PAGE,
+        applicantQuery,
+      ).then((result) => {
+        if (!active) return;
+        setApplicants(result.items.map((row) => ({
+          id: row.id,
+          name: row.user_name,
+          studentId: row.user_student_id,
+          major: row.applicant_department ?? "—",
+          submittedAt: row.submitted_at ? new Intl.DateTimeFormat("ko-KR").format(new Date(row.submitted_at)) : "—",
+          status: statusFromApi(row.status),
+        })));
+        setApplicantTotal(result.total);
+        setApplicantTotalPages(Math.max(1, result.pages));
+      }).catch((error) => {
+        if (active) toast.error(error instanceof Error ? error.message : "신청서 목록을 불러오지 못했습니다.");
+      });
+    }, 250);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [applicantPage, applicantQuery, selectedClubId]);
 
-  const applicantTotalPages = Math.max(
-    1,
-    Math.ceil(filteredApplicants.length / APPLICANTS_PER_PAGE),
-  );
   const safeApplicantPage = Math.min(applicantPage, applicantTotalPages);
-  const pagedApplicants = filteredApplicants.slice(
-    (safeApplicantPage - 1) * APPLICANTS_PER_PAGE,
-    safeApplicantPage * APPLICANTS_PER_PAGE,
-  );
+  const pagedApplicants = applicants;
   const applicantPageNumbers = useMemo(() => {
     const visibleCount = Math.min(applicantTotalPages, 5);
     const start = Math.max(
@@ -868,7 +877,7 @@ export function AdminPage() {
                 신청서 관리
               </h2>
               <span className="rounded-full bg-[#EEF4FF] px-3 py-1 text-lg font-extrabold text-[#1F4F95]">
-                총 {applicants.length}명
+                총 {applicantTotal}명
               </span>
             </div>
 
@@ -979,7 +988,7 @@ export function AdminPage() {
             </div>
 
             <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm font-medium text-slate-500">전체 {applicants.length}명 중 {filteredApplicants.length}명</p>
+              <p className="text-sm font-medium text-slate-500">검색 결과 {applicantTotal}명</p>
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
