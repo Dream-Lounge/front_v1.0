@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { api, type PostDetailResponse, type ActiveClubItem } from "@/lib/api";
+import { toastApiError } from "@/lib/api-error";
 import { toast } from "sonner";
 
 export function PostDetail() {
@@ -61,7 +62,7 @@ export function PostDetail() {
       setComment("");
       fetchPost();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "댓글 등록에 실패했습니다.");
+      toastApiError(error, "댓글 등록에 실패했습니다.");
     } finally {
       setIsSubmittingComment(false);
     }
@@ -74,7 +75,7 @@ export function PostDetail() {
       fetchPost();
       toast.success("댓글이 삭제되었습니다.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "댓글 삭제에 실패했습니다.");
+      toastApiError(error, "댓글 삭제에 실패했습니다.");
     }
   };
 
@@ -86,7 +87,7 @@ export function PostDetail() {
       toast.success("게시글이 삭제되었습니다.");
       navigate(`/club/${clubId}/community`, { replace: true });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "게시글 삭제에 실패했습니다.");
+      toastApiError(error, "게시글 삭제에 실패했습니다.");
     }
   };
 

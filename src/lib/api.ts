@@ -323,6 +323,10 @@ export class SessionExpiredError extends Error {
   }
 }
 
+export function isSessionExpiredError(error: unknown): error is SessionExpiredError {
+  return error instanceof SessionExpiredError;
+}
+
 export class ApiRequestError extends Error {
   readonly status: number;
 

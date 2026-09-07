@@ -8,6 +8,7 @@ import { LogIn, Eye, EyeOff, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { validators, ERROR_MESSAGES } from "@/lib/validators";
 import { useAuth } from "@/hooks/useAuth";
+import { isSessionExpiredError } from "@/lib/api";
 
 /**
  * 로그인 페이지 컴포넌트
@@ -62,8 +63,10 @@ export function Login() {
     try {
       await login(studentId, password);
       navigate("/");
-    } catch {
-      setLoginError(true);
+    } catch (error) {
+      // 세션 만료는 전역 다이얼로그가 안내하므로 로그인 정보 오류로
+      // 중복 표시하지 않는다.
+      if (!isSessionExpiredError(error)) setLoginError(true);
     } finally {
       setIsLoading(false);
     }

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 import { api, type ApiApplicationListItem } from "@/lib/api";
+import { toastApiError } from "@/lib/api-error";
 
 function formatSavedAt(value: string): string {
   const date = new Date(value);
@@ -33,7 +34,7 @@ export function ApplicationDrafts() {
     let active = true;
     api.getDraftApplications()
       .then((items) => { if (active) setDrafts(items); })
-      .catch((error) => toast.error(error instanceof Error ? error.message : "임시저장 목록을 불러오지 못했습니다."))
+      .catch((error) => toastApiError(error, "임시저장 목록을 불러오지 못했습니다."))
       .finally(() => { if (active) setIsLoading(false); });
     return () => { active = false; };
   }, [isAuthLoading, user]);
@@ -44,7 +45,7 @@ export function ApplicationDrafts() {
       setDrafts((prev) => prev.filter((draft) => draft.id !== applicationId));
       toast.success("임시저장 지원서를 삭제했습니다.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "삭제에 실패했습니다.");
+      toastApiError(error, "삭제에 실패했습니다.");
     }
   };
 

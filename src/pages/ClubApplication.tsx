@@ -9,7 +9,7 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
-import { api, type ApplicantInfoInput, type ApplicationFormResponse, type FormQuestionResponse } from "@/lib/api";
+import { api, isSessionExpiredError, type ApplicantInfoInput, type ApplicationFormResponse, type FormQuestionResponse } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 type ApplicationMode = "create" | "edit" | "view";
@@ -141,7 +141,9 @@ export function ClubApplication() {
         setApplicantInfo(initialApplicantInfo);
         setAnswers(initialAnswers);
       } catch (error) {
-        if (active) setSubmitError(error instanceof Error ? error.message : "지원서 정보를 불러오지 못했습니다.");
+        if (active && !isSessionExpiredError(error)) {
+          setSubmitError(error instanceof Error ? error.message : "지원서 정보를 불러오지 못했습니다.");
+        }
       } finally {
         if (active) setIsDataLoading(false);
       }
@@ -219,7 +221,9 @@ export function ClubApplication() {
       toast.success("지원서가 성공적으로 제출되었습니다.");
       navigate(user ? `/users/${user.studentId}/applications` : `/club/${clubId}`);
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "지원서 제출에 실패했습니다.");
+      if (!isSessionExpiredError(error)) {
+        setSubmitError(error instanceof Error ? error.message : "지원서 제출에 실패했습니다.");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -240,7 +244,9 @@ export function ClubApplication() {
       toast.success("지원서가 임시저장되었습니다.");
       navigate(user ? `/users/${user.studentId}/drafts` : "/", { replace: true });
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "임시저장에 실패했습니다.");
+      if (!isSessionExpiredError(error)) {
+        setSubmitError(error instanceof Error ? error.message : "임시저장에 실패했습니다.");
+      }
     } finally {
       setIsSubmitting(false);
     }

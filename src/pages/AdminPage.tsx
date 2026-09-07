@@ -48,6 +48,7 @@ import {
   type ClubContactLinkType,
   type PostListItem,
 } from "@/lib/api";
+import { toastApiError } from "@/lib/api-error";
 
 type AdminTab =
   | "club-register"
@@ -371,7 +372,7 @@ export function AdminPage() {
           } else throw error;
         }
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "관리자 데이터를 불러오지 못했습니다.");
+        toastApiError(error, "관리자 데이터를 불러오지 못했습니다.");
       }
     };
     void load();
@@ -400,7 +401,7 @@ export function AdminPage() {
         setApplicantTotal(result.total);
         setApplicantTotalPages(Math.max(1, result.pages));
       }).catch((error) => {
-        if (active) toast.error(error instanceof Error ? error.message : "신청서 목록을 불러오지 못했습니다.");
+        if (active) toastApiError(error, "신청서 목록을 불러오지 못했습니다.");
       });
     }, 250);
     return () => {
@@ -495,7 +496,7 @@ export function AdminPage() {
       setIsAddOpen(false);
       toast.success("문항을 추가했습니다.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : editingQuestionId ? "문항 수정에 실패했습니다." : "문항 추가에 실패했습니다.");
+      toastApiError(error, editingQuestionId ? "문항 수정에 실패했습니다." : "문항 추가에 실패했습니다.");
     }
   };
 
@@ -558,7 +559,7 @@ export function AdminPage() {
       toast.success("문항 순서를 변경했습니다.");
     } catch (error) {
       setQuestions(dragStartQuestionsRef.current);
-      toast.error(error instanceof Error ? error.message : "문항 순서 변경에 실패했습니다.");
+      toastApiError(error, "문항 순서 변경에 실패했습니다.");
     }
   };
 
@@ -569,7 +570,7 @@ export function AdminPage() {
       setQuestions((prev) => prev.filter((question) => question.id !== id));
       toast.success("문항을 삭제했습니다.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "문항 삭제에 실패했습니다.");
+      toastApiError(error, "문항 삭제에 실패했습니다.");
     }
   };
 
@@ -581,7 +582,7 @@ export function AdminPage() {
       const updated = await api.updateFormQuestion(selectedClubId, id, { is_required: !question.required });
       setQuestions((prev) => prev.map((item) => item.id === id ? { ...item, required: updated.is_required } : item));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "문항 수정에 실패했습니다.");
+      toastApiError(error, "문항 수정에 실패했습니다.");
     }
   };
 
@@ -616,7 +617,7 @@ export function AdminPage() {
       closeStatusEdit();
       toast.success("신청서 상태를 변경했습니다.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "상태 변경에 실패했습니다.");
+      toastApiError(error, "상태 변경에 실패했습니다.");
     }
   };
 
@@ -671,7 +672,7 @@ export function AdminPage() {
       setContactLinks(persistedContactLinks.map((link, index) => ({ ...link, id: index + 1 })));
       toast.success(isNewClub ? "동아리를 등록했습니다." : "동아리 정보를 저장했습니다.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "동아리 정보 저장에 실패했습니다.");
+      toastApiError(error, "동아리 정보 저장에 실패했습니다.");
     }
   };
 
@@ -686,7 +687,7 @@ export function AdminPage() {
       else setActivityPhotos((prev) => [...prev, { id: prev.reduce((max, item) => Math.max(max, item.id), 0) + 1, caption: "", url }]);
       toast.success("이미지를 업로드했습니다.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "이미지 업로드에 실패했습니다.");
+      toastApiError(error, "이미지 업로드에 실패했습니다.");
     }
   };
 
@@ -697,7 +698,7 @@ export function AdminPage() {
       setSelectedApplication(application);
       setReviewComment(application.admin_comment ?? "");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "신청서 상세를 불러오지 못했습니다.");
+      toastApiError(error, "신청서 상세를 불러오지 못했습니다.");
     }
   };
 
@@ -709,7 +710,7 @@ export function AdminPage() {
       setSelectedApplication((previous) => previous ? { ...previous, admin_comment: saved.admin_comment } : previous);
       toast.success("관리자 코멘트를 저장했습니다.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "관리자 코멘트 저장에 실패했습니다.");
+      toastApiError(error, "관리자 코멘트 저장에 실패했습니다.");
     }
   };
 
@@ -723,7 +724,7 @@ export function AdminPage() {
       setIsPostDialogOpen(false);
       toast.success("게시글을 등록했습니다.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "게시글 등록에 실패했습니다.");
+      toastApiError(error, "게시글 등록에 실패했습니다.");
     }
   };
 
@@ -735,7 +736,7 @@ export function AdminPage() {
       setSelectedPostIds([]);
       toast.success("게시글을 삭제했습니다.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "게시글 삭제에 실패했습니다.");
+      toastApiError(error, "게시글 삭제에 실패했습니다.");
     }
   };
 
@@ -747,7 +748,7 @@ export function AdminPage() {
       setSelectedPostIds([]);
       toast.success("공지 상태를 변경했습니다.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "공지 상태 변경에 실패했습니다.");
+      toastApiError(error, "공지 상태 변경에 실패했습니다.");
     }
   };
 

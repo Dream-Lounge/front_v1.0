@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api, type PostListItem } from "@/lib/api";
+import { toastApiError } from "@/lib/api-error";
 
 type CommunityCategory =
   | "전체글"
@@ -82,7 +83,7 @@ export function ClubCommunity() {
       if (!active) return;
       setPostsForClub(posts.map(mapPost));
       setIsClubMember(clubs.some((club) => club.club_id === clubId));
-    }).catch((error) => toast.error(error instanceof Error ? error.message : "게시글을 불러오지 못했습니다."));
+    }).catch((error) => toastApiError(error, "게시글을 불러오지 못했습니다."));
     return () => { active = false; };
   }, [clubId, isAuthenticated, user]);
 
