@@ -1,17 +1,15 @@
 import { useState, useCallback, useEffect, type ReactNode } from "react";
-import { api } from "@/lib/api";
-import { getStoredUser } from "@/lib/auth";
+import { api, type User } from "@/lib/api";
 import { AuthContext } from "./auth";
 import { SessionExpiredDialog } from "@/components/common/SessionExpiredDialog";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<ReturnType<typeof getStoredUser>>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSessionExpired, setIsSessionExpired] = useState(false);
   const [managedClubs, setManagedClubs] = useState<Awaited<ReturnType<typeof api.getMyClubs>>>([]);
 
   useEffect(() => {
-    const storedUser = getStoredUser();
     let active = true;
 
     api.setSessionExpiredHandler(() => {
@@ -21,16 +19,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsSessionExpired(true);
     });
 
-    if (!storedUser) {
-      setIsLoading(false);
-      return () => {
-        active = false;
-        api.setSessionExpiredHandler(null);
-      };
-    }
-
-    Promise.all([api.getCurrentUser(), api.getMyClubs().catch(() => [])])
-      .then(([currentUser, clubs]) => {
+    api.restoreSession()
+      .then(async (currentUser) => {
+        const clubs = currentUser ? await api.getMyClubs().catch(() => []) : [];
         if (active) {
           setUser(currentUser);
           setManagedClubs(clubs.filter((club) => club.role === "president"));

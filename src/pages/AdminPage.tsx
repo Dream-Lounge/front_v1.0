@@ -676,8 +676,12 @@ export function AdminPage() {
   };
 
   const uploadImage = async (file: File, target: "cover" | "activity") => {
+    if (!selectedClubId) {
+      toast.error("이미지를 올리기 전에 동아리 기본 정보를 먼저 저장해주세요.");
+      return;
+    }
     try {
-      const url = await api.uploadClubImage(file);
+      const url = await api.uploadClubImage(selectedClubId, file);
       if (target === "cover") setClubImageUrl(url);
       else setActivityPhotos((prev) => [...prev, { id: prev.reduce((max, item) => Math.max(max, item.id), 0) + 1, caption: "", url }]);
       toast.success("이미지를 업로드했습니다.");
@@ -1901,7 +1905,7 @@ export function AdminPage() {
             )}
             {selectedApplication?.answers.map((answer, index) => {
               const question = questions.find((item) => item.id === answer.question_id);
-              return <div key={answer.question_id} className="rounded-lg border p-3"><p className="text-sm font-semibold">{index + 1}. {question?.title ?? "질문"}</p><p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{answer.answer_text || "답변 없음"}</p></div>;
+              return <div key={answer.question_id} className="rounded-lg border p-3"><p className="text-sm font-semibold">{index + 1}. {answer.question_text ?? question?.title ?? "질문"}</p><p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{answer.answer_text || "답변 없음"}</p></div>;
             })}
             <section className="rounded-lg border border-blue-200 bg-blue-50/60 p-4">
               <label htmlFor="review-comment" className="text-sm font-bold text-foreground">관리자 코멘트</label>

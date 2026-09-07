@@ -30,7 +30,6 @@ export function Signup() {
     };
     setErrors(nextErrors);
     if (Object.values(nextErrors).some(Boolean)) return;
-
     setIsLoading(true);
     setApiError(null);
     try {

@@ -75,6 +75,7 @@ export function ClubApplication() {
       try {
         let resolvedClubId = id;
         let initialAnswers: Record<string, string> = {};
+        let submittedForm: ApplicationFormResponse | null = null;
         let initialApplicantInfo: ApplicantInfo = {
           studentId: user?.studentId ?? "",
           // 간편가입은 별도 이름을 받지 않아 프로필 이름에 학번이 들어갈
@@ -109,6 +110,15 @@ export function ClubApplication() {
           initialAnswers = Object.fromEntries(
             application.answers.map((answer) => [answer.question_id, answer.answer_text ?? ""]),
           );
+          if (mode === "view" && application.form_snapshot) {
+            submittedForm = {
+              id: application.form_snapshot.id,
+              club_id: resolvedClubId,
+              title: application.form_snapshot.title,
+              is_active: false,
+              questions: application.form_snapshot.questions,
+            };
+          }
           initialApplicantInfo = {
             studentId: application.applicant_student_id ?? initialApplicantInfo.studentId,
             name: application.applicant_name ?? initialApplicantInfo.name,
@@ -120,7 +130,7 @@ export function ClubApplication() {
 
         const [club, applicationForm] = await Promise.all([
           api.getClub(resolvedClubId),
-          api.getClubForm(resolvedClubId),
+          submittedForm ? Promise.resolve(submittedForm) : api.getClubForm(resolvedClubId),
         ]);
         if (!active) return;
         setClubId(resolvedClubId);

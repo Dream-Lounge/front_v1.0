@@ -33,7 +33,7 @@ export const MOCK_APPLICATIONS: Application[] = [
     category: "문화예술",
     status: "accepted",
     appliedDate: "2025.09.28",
-    message: "축하합니다! 서류 전형에 합격하셨습니다. 향후 면접 일정 및 자세한 안내 사항은 가입하신 이메일로 발송되었습니다.",
+    message: "축하합니다! 서류 전형에 합격하셨습니다. 향후 일정과 자세한 안내는 해당 동아리를 통해 확인해주세요.",
   },
   {
     id: "3",

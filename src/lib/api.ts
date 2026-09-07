@@ -1,5 +1,3 @@
-import { isTokenExpired } from "./auth";
-
 export const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 if (!API_BASE_URL) {
@@ -16,7 +14,6 @@ export interface User {
   id: string;
   studentId: string;
   name: string;
-  email: string;
   department: string | null;
   phone: string | null;
 }
@@ -25,21 +22,16 @@ interface ApiUser {
   id: string;
   student_id: string;
   name: string;
-  email: string;
   department: string | null;
   phone: string | null;
 }
 
 export interface LoginResponse {
-  access_token: string;
-  refresh_token: string | null;
   token_type: string;
   user: User;
 }
 
 interface ApiTokenResponse {
-  access_token: string;
-  refresh_token: string | null;
   token_type: string;
   user: ApiUser;
 }
@@ -65,10 +57,8 @@ export interface SignupResponse {
   id: string;
   studentId: string;
   name: string;
-  email: string;
   department: string | null;
   phone: string | null;
-  emailVerified: boolean;
   createdAt: string;
 }
 
@@ -184,7 +174,8 @@ export interface AdminApplicationListItem {
 }
 
 export interface AdminApplicationDetail extends AdminApplicationListItem {
-  answers: Array<{ question_id: string; answer_text: string | null }>;
+  answers: ApiApplicationDetail["answers"];
+  form_snapshot: ApiApplicationDetail["form_snapshot"];
 }
 
 export interface ClubMember {
@@ -192,7 +183,6 @@ export interface ClubMember {
   name: string;
   student_id: string;
   department: string | null;
-  email: string;
   phone: string | null;
   role: string;
   joined_at: string;
@@ -286,6 +276,8 @@ export interface ApiApplicationListItem {
   form_id: string;
   club_id: string | null;
   club_name: string | null;
+  club_image: string | null;
+  club_category: string | null;
   status: string;
   is_draft: boolean;
   submitted_at: string | null;
@@ -299,17 +291,28 @@ export interface ApiApplicationDetail extends ApiApplicationListItem {
   applicant_department: string | null;
   applicant_phone: string | null;
   applicant_grade: string | null;
-  answers: Array<{ question_id: string; answer_text: string | null }>;
+  answers: Array<{
+    question_id: string;
+    answer_text: string | null;
+    question_text: string | null;
+    question_type: string | null;
+    is_required: boolean | null;
+    order_index: number | null;
+    options: string[] | null;
+  }>;
+  form_snapshot: {
+    id: string;
+    title: string;
+    questions: FormQuestionResponse[];
+  } | null;
 }
 
 interface ApiSignupResponse {
   id: string;
   student_id: string;
   name: string;
-  email: string;
   department: string | null;
   phone: string | null;
-  email_verified: boolean;
   created_at: string;
 }
 
@@ -335,7 +338,6 @@ function mapUser(apiUser: ApiUser): User {
     id: apiUser.id,
     studentId: apiUser.student_id,
     name: apiUser.name,
-    email: apiUser.email,
     department: apiUser.department,
     phone: apiUser.phone,
   };
@@ -366,21 +368,9 @@ class ApiClient {
     this.sessionExpiredHandler = handler;
   }
 
-  private getAccessToken(): string | null {
-    return localStorage.getItem("access_token");
-  }
-
-  private getRefreshToken(): string | null {
-    return localStorage.getItem("refresh_token");
-  }
-
-  private setTokens(accessToken: string, refreshToken: string | null): void {
-    localStorage.setItem("access_token", accessToken);
-    if (refreshToken) localStorage.setItem("refresh_token", refreshToken);
-    else localStorage.removeItem("refresh_token");
-  }
-
   clearTokens(): void {
+    // 이전 버전에서 남긴 인증 정보만 제거한다. 현재 세션 토큰은
+    // JavaScript에서 읽을 수 없는 HttpOnly 쿠키에 저장된다.
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
     localStorage.removeItem("user");
@@ -393,20 +383,14 @@ class ApiClient {
   }
 
   private async performRefresh(): Promise<boolean> {
-    const refreshToken = this.getRefreshToken();
-    if (!refreshToken) return false;
     try {
       const response = await fetch(`${this.baseUrl}/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh_token: refreshToken }),
+        credentials: "include",
       });
       if (!response.ok) return false;
-
-      const data: ApiTokenResponse = await response.json();
-      const user = mapUser(data.user);
-      this.setTokens(data.access_token, data.refresh_token);
-      localStorage.setItem("user", JSON.stringify(user));
+      await response.json() as ApiTokenResponse;
       return true;
     } catch {
       return false;
@@ -424,26 +408,16 @@ class ApiClient {
 
   async request<T>(endpoint: string, options: RequestInit = {}, requiresAuth = true): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
-    let accessToken = this.getAccessToken();
-
-    if (requiresAuth && (!accessToken || isTokenExpired(accessToken, 30))) {
-      const refreshed = await this.refreshAccessToken();
-      if (!refreshed) this.expireSession();
-      accessToken = this.getAccessToken();
-    }
-
     const headers: Record<string, string> = {
       ...(options.headers as Record<string, string>),
     };
     if (!(options.body instanceof FormData)) headers["Content-Type"] = "application/json";
-    if (requiresAuth && accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
-    let response = await fetch(url, { ...options, headers });
+    let response = await fetch(url, { ...options, headers, credentials: "include" });
     if (requiresAuth && response.status === 401) {
       const refreshed = await this.refreshAccessToken();
       if (!refreshed) this.expireSession();
-      headers.Authorization = `Bearer ${this.getAccessToken()}`;
-      response = await fetch(url, { ...options, headers });
+      response = await fetch(url, { ...options, headers, credentials: "include" });
     }
 
     if (!response.ok) {
@@ -460,37 +434,19 @@ class ApiClient {
     return response.json() as Promise<T>;
   }
 
-  async sendEmailVerification(email: string): Promise<void> {
-    await this.request("/auth/email-verify/send", {
-      method: "POST",
-      body: JSON.stringify({ email }),
-    }, false);
-  }
-
-  async confirmEmailVerification(email: string, code: string): Promise<void> {
-    await this.request("/auth/email-verify/confirm", {
-      method: "POST",
-      body: JSON.stringify({ email, code }),
-    }, false);
-  }
-
   async login(studentId: string, password: string): Promise<LoginResponse> {
     const response = await this.request<ApiTokenResponse>("/auth/login", {
       method: "POST",
       body: JSON.stringify({ student_id: studentId, password }),
     }, false);
     const user = mapUser(response.user);
-    this.setTokens(response.access_token, response.refresh_token);
-    localStorage.setItem("user", JSON.stringify(user));
     return { ...response, user };
   }
 
   async logout(): Promise<void> {
-    const refreshToken = this.getRefreshToken();
     try {
       await this.request<void>("/auth/logout", {
         method: "POST",
-        body: JSON.stringify({ refresh_token: refreshToken }),
       });
     } finally {
       this.clearTokens();
@@ -499,6 +455,16 @@ class ApiClient {
 
   async getCurrentUser(): Promise<User> {
     return mapUser(await this.request<ApiUser>("/auth/me"));
+  }
+
+  async restoreSession(): Promise<User | null> {
+    this.clearTokens();
+    if (!await this.performRefresh()) return null;
+    try {
+      return await this.getCurrentUser();
+    } catch {
+      return null;
+    }
   }
 
   deleteAccount(): Promise<void> {
@@ -517,10 +483,8 @@ class ApiClient {
       id: response.id,
       studentId: response.student_id,
       name: response.name,
-      email: response.email,
       department: response.department,
       phone: response.phone,
-      emailVerified: response.email_verified,
       createdAt: response.created_at,
     };
   }
@@ -555,10 +519,10 @@ class ApiClient {
     });
   }
 
-  async uploadClubImage(file: File): Promise<string> {
+  async uploadClubImage(clubId: string, file: File): Promise<string> {
     const body = new FormData();
     body.append("file", file);
-    const response = await this.request<{ image_url: string }>("/clubs/images", {
+    const response = await this.request<{ image_url: string }>(`/clubs/${encodeURIComponent(clubId)}/images`, {
       method: "POST",
       body,
     });
@@ -754,17 +718,13 @@ class ApiClient {
 
   async getMyApplications(): Promise<ApplicationListResponseItem[]> {
     const applications = await this.request<ApiApplicationListItem[]>("/me/applications/submitted");
-    const clubIds = [...new Set(applications.map((application) => application.club_id).filter((id): id is string => Boolean(id)))];
-    const clubs = await Promise.all(clubIds.map((clubId) => this.getClub(clubId)));
-    const clubsById = new Map(clubs.map((club) => [club.id, club]));
     return applications.map((application) => {
-      const club = application.club_id ? clubsById.get(application.club_id) : undefined;
       return {
         id: application.id,
         club_id: application.club_id ?? "",
-        club_name: application.club_name ?? club?.name ?? "동아리",
-        club_image: club?.image_url ?? null,
-        category: club?.division ?? club?.club_type ?? null,
+        club_name: application.club_name ?? "동아리",
+        club_image: application.club_image,
+        category: application.club_category,
         status: mapApplicationStatus(application.status, application.is_draft),
         submitted_time: application.submitted_at ?? application.updated_at,
         motivation: "",

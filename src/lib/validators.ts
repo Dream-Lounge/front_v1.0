@@ -2,8 +2,6 @@ export const REGEX = {
   STUDENT_ID: /^\d{10}$/,
   PHONE: /^\d{10,11}$/,
   PASSWORD: /^\d{4}$/,
-  /** 청주대학교 학교 이메일 (@cju.ac.kr) */
-  SCHOOL_EMAIL: /^[^\s@]+@cju\.ac\.kr$/i,
 };
 
 export const ERROR_MESSAGES = {
@@ -14,7 +12,6 @@ export const ERROR_MESSAGES = {
   DEPARTMENT: "학과를 선택해주세요.",
   PASSWORD_CONFIRM: "비밀번호 확인을 입력해주세요.",
   PASSWORD_MISMATCH: "비밀번호가 일치하지 않습니다.",
-  SCHOOL_EMAIL: "청주대학교 학교 이메일(@cju.ac.kr) 형식으로 입력해주세요.",
 };
 
 export const validators = {
@@ -24,5 +21,4 @@ export const validators = {
   name: (value: string) => !value.trim(),
   department: (value: string) => !value,
   passwordConfirm: (value: string) => !value.trim(),
-  schoolEmail: (value: string) => !REGEX.SCHOOL_EMAIL.test(value.trim()),
 };
