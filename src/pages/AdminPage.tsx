@@ -23,6 +23,7 @@ import {
   Mail,
   Phone,
   Link2,
+  Download,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -148,6 +149,23 @@ interface SubmittedApplication {
   submittedAt: string;
   status: ApplicationStatusValue;
 }
+
+type ExportColumnKey =
+  | "name"
+  | "studentId"
+  | "major"
+  | "submittedAt"
+  | "status"
+  | "form";
+
+const EXPORT_COLUMNS: { key: ExportColumnKey; label: string }[] = [
+  { key: "name", label: "이름" },
+  { key: "studentId", label: "학번" },
+  { key: "major", label: "학과" },
+  { key: "submittedAt", label: "지원일시" },
+  { key: "status", label: "상태" },
+  { key: "form", label: "신청폼" },
+];
 
 const STATUS_SELECT_CLASS: Record<ApplicationStatusValue, string> = {
   합격: "bg-[#E8FAEE] text-[#14863F]",
@@ -285,6 +303,18 @@ export function AdminPage() {
   const [applicantTotalPages, setApplicantTotalPages] = useState(1);
   const [selectedApplication, setSelectedApplication] = useState<AdminApplicationDetail | null>(null);
   const [reviewComment, setReviewComment] = useState("");
+
+  /** 신청서 엑셀 다운로드 — 항목 선택 다이얼로그 */
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [exportColumns, setExportColumns] = useState<Record<ExportColumnKey, boolean>>({
+    name: true,
+    studentId: true,
+    major: true,
+    submittedAt: true,
+    status: true,
+    form: true,
+  });
+  const [isExporting, setIsExporting] = useState(false);
   const [communityPosts, setCommunityPosts] = useState<PostListItem[]>([]);
   const [selectedPostIds, setSelectedPostIds] = useState<string[]>([]);
   const [isPostDialogOpen, setIsPostDialogOpen] = useState(false);
@@ -703,6 +733,115 @@ export function AdminPage() {
     }
   };
 
+  /** 선택한 항목만 담아 신청서 목록을 엑셀(.xlsx)로 다운로드합니다. */
+  const exportApplications = async () => {
+    if (!selectedClubId) return;
+    const selectedKeys = EXPORT_COLUMNS.filter((column) => exportColumns[column.key]).map(
+      (column) => column.key,
+    );
+    if (selectedKeys.length === 0) {
+      toast.error("다운로드할 항목을 하나 이상 선택해주세요.");
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const { items } = await api.getClubApplications(
+        selectedClubId,
+        1,
+        Math.max(applicantTotal, 1),
+        applicantQuery,
+      );
+
+      const formTextById = new Map<string, string>();
+      if (selectedKeys.includes("form")) {
+        const details = await Promise.all(
+          items.map((item) =>
+            api.getClubApplication(selectedClubId, item.id).catch(() => null),
+          ),
+        );
+        details.forEach((detail, index) => {
+          if (!detail) return;
+          const text = [...detail.answers]
+            .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+            .map((answer) => `${answer.question_text ?? ""}: ${answer.answer_text ?? ""}`)
+            .join("\n");
+          formTextById.set(items[index].id, text);
+        });
+      }
+
+      const dateFormatter = new Intl.DateTimeFormat("ko-KR", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+      const cellValue = (item: (typeof items)[number], key: ExportColumnKey): string => {
+        switch (key) {
+          case "name":
+            return item.user_name;
+          case "studentId":
+            return item.user_student_id;
+          case "major":
+            return item.applicant_department ?? "—";
+          case "submittedAt":
+            return item.submitted_at ? dateFormatter.format(new Date(item.submitted_at)) : "—";
+          case "status":
+            return statusFromApi(item.status);
+          case "form":
+            return formTextById.get(item.id) ?? "";
+        }
+      };
+
+      const columns = EXPORT_COLUMNS.filter((column) => exportColumns[column.key]);
+      // 무거운 엑셀 생성 라이브러리는 실제 다운로드 시점에만 불러와 초기 번들 크기를 줄인다.
+      const { default: ExcelJS } = await import("exceljs");
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("신청서");
+      worksheet.columns = columns.map((column) => ({
+        header: column.label,
+        key: column.key,
+        width: column.key === "form" ? 50 : 18,
+      }));
+      worksheet.getRow(1).font = { bold: true };
+      items.forEach((item) => {
+        worksheet.addRow(
+          Object.fromEntries(columns.map((column) => [column.key, cellValue(item, column.key)])),
+        );
+      });
+      worksheet.eachRow((row) => {
+        row.eachCell((cell) => {
+          cell.alignment = { vertical: "top", wrapText: true };
+        });
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = URL.createObjectURL(blob);
+      const dateLabel = new Intl.DateTimeFormat("ko-KR", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      })
+        .format(new Date())
+        .replace(/\. /g, "")
+        .replace(".", "");
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${clubName.trim() || "신청서"}_신청서_${dateLabel}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+
+      setIsExportDialogOpen(false);
+    } catch (error) {
+      toastApiError(error, "엑셀 다운로드에 실패했습니다.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const saveReviewComment = async () => {
     if (!selectedApplication || !selectedClubId) return;
     try {
@@ -1057,6 +1196,13 @@ export function AdminPage() {
               >
                 <SlidersHorizontal className="size-4" />
               </button>
+              <Button
+                onClick={() => setIsExportDialogOpen(true)}
+                className="h-9 w-full rounded-lg bg-slate-900 px-4 text-white hover:bg-slate-800 sm:w-auto"
+              >
+                <Download className="mr-1 size-4" />
+                다운로드
+              </Button>
             </div>
           </div>
 
@@ -1904,6 +2050,41 @@ export function AdminPage() {
             <Textarea value={postContent} onChange={(event) => setPostContent(event.target.value)} placeholder="내용을 입력해주세요." className="min-h-40 resize-none" />
           </div>
           <DialogFooter><Button variant="ghost" onClick={() => setIsPostDialogOpen(false)}>취소</Button><Button onClick={() => void createCommunityPost()} disabled={!postTitle.trim() || !postContent.trim()}>등록</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+        <DialogContent className="sm:max-w-sm" aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle>신청서 다운로드</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-2">
+            {EXPORT_COLUMNS.map((column) => (
+              <label
+                key={column.key}
+                className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                <input
+                  type="checkbox"
+                  checked={exportColumns[column.key]}
+                  onChange={(event) =>
+                    setExportColumns((prev) => ({ ...prev, [column.key]: event.target.checked }))
+                  }
+                  className="size-4 rounded border-slate-300 accent-primary"
+                />
+                {column.label}
+              </label>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsExportDialogOpen(false)}>
+              취소
+            </Button>
+            <Button onClick={() => void exportApplications()} disabled={isExporting}>
+              <Download className="mr-1 size-4" />
+              {isExporting ? "다운로드 중..." : "다운로드"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
