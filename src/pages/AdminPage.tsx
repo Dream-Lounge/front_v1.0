@@ -1474,7 +1474,7 @@ export function AdminPage() {
                           className={cn(
                             "flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors",
                             isActive
-                              ? "border-r-2 border-primary bg-[#EAF1FC] text-primary"
+                              ? "bg-[#EAF1FC] text-primary"
                               : "text-slate-600 hover:bg-slate-100",
                           )}
                         >
