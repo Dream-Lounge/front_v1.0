@@ -677,12 +677,8 @@ export function AdminPage() {
   };
 
   const uploadImage = async (file: File, target: "cover" | "activity") => {
-    if (!selectedClubId) {
-      toast.error("이미지를 올리기 전에 동아리 기본 정보를 먼저 저장해주세요.");
-      return;
-    }
     try {
-      const url = await api.uploadClubImage(selectedClubId, file);
+      const url = await api.uploadClubImage(selectedClubId || null, file);
       if (target === "cover") setClubImageUrl(url);
       else setActivityPhotos((prev) => [...prev, { id: prev.reduce((max, item) => Math.max(max, item.id), 0) + 1, caption: "", url }]);
       toast.success("이미지를 업로드했습니다.");

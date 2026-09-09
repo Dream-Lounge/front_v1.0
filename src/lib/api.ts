@@ -523,10 +523,13 @@ class ApiClient {
     });
   }
 
-  async uploadClubImage(clubId: string, file: File): Promise<string> {
+  async uploadClubImage(clubId: string | null, file: File): Promise<string> {
     const body = new FormData();
     body.append("file", file);
-    const response = await this.request<{ image_url: string }>(`/clubs/${encodeURIComponent(clubId)}/images`, {
+    const endpoint = clubId
+      ? `/clubs/${encodeURIComponent(clubId)}/images`
+      : "/clubs/images";
+    const response = await this.request<{ image_url: string }>(endpoint, {
       method: "POST",
       body,
     });
