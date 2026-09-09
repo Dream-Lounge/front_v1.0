@@ -30,6 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -763,7 +764,7 @@ export function AdminPage() {
             <div>
               <div>
                 <h3 className="text-base font-bold text-slate-800">
-                  동아리 이름 <span className="text-red-500">*</span>
+                  동아리 명 <span className="text-red-500">*</span>
                 </h3>
                 <Input
                   value={clubName}
@@ -776,7 +777,7 @@ export function AdminPage() {
 
             <div className="mt-5">
               <h3 className="text-base font-bold text-slate-800">
-                대표 포스터 한 장{" "}
+                대표 이미지{" "}
                 <span className="text-sm font-medium text-slate-400">(권장: 1920×1080px)</span>
               </h3>
               <button
@@ -802,16 +803,26 @@ export function AdminPage() {
             </div>
 
             <section className="mt-5">
-              <h3 className="text-base font-bold text-slate-800">모집 상태</h3>
-              <label className="mt-3 inline-flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3">
-                <input
-                  type="checkbox"
+              <h3 id="club-recruiting-label" className="text-base font-bold text-slate-800">
+                모집 상태
+              </h3>
+              <div className="mt-3 flex items-center gap-3">
+                <Switch
+                  id="club-recruiting"
+                  aria-labelledby="club-recruiting-label"
                   checked={clubIsRecruiting}
-                  onChange={(event) => setClubIsRecruiting(event.target.checked)}
-                  className="size-4 accent-primary"
+                  onCheckedChange={setClubIsRecruiting}
                 />
-                <span className="text-sm font-semibold text-slate-700">모집중</span>
-              </label>
+                <label
+                  htmlFor="club-recruiting"
+                  className={cn(
+                    "cursor-pointer text-sm font-semibold",
+                    clubIsRecruiting ? "text-primary" : "text-slate-500",
+                  )}
+                >
+                  {clubIsRecruiting ? "모집중" : "모집 마감"}
+                </label>
+              </div>
             </section>
 
             <section className="mt-5">
@@ -1745,8 +1756,16 @@ export function AdminPage() {
             <div className="relative aspect-[3/1] w-full overflow-hidden rounded-xl bg-slate-100">
               {clubImageUrl ? <img src={clubImageUrl} alt={`${clubName || "동아리"} 배너`} className="h-full w-full object-cover" /> : <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-slate-400"><ImageIcon className="size-7" aria-hidden /><span className="text-xs font-medium">등록된 배너 이미지 없음</span></div>}
               <div className="absolute top-3 right-3">
-                <Badge size="detail" className="bg-primary font-semibold text-primary-foreground">
-                  모집중
+                <Badge
+                  size="detail"
+                  className={cn(
+                    "font-semibold",
+                    clubIsRecruiting
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-slate-500 text-white",
+                  )}
+                >
+                  {clubIsRecruiting ? "모집중" : "모집 마감"}
                 </Badge>
               </div>
             </div>
