@@ -1,6 +1,4 @@
-import { Link } from "react-router-dom";
 import {
-  ArrowRight,
   ClipboardCheck,
   FileText,
   Megaphone,
@@ -8,7 +6,6 @@ import {
   Search,
   Sparkles,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { FEATURES } from "@/config/features";
 
 const ALL_FEATURE_CARDS = [
@@ -166,22 +163,6 @@ export function About() {
             ))}
           </ol>
         </section>
-
-        {/* CTA */}
-        <div className="flex flex-col items-center gap-4 rounded-2xl bg-muted/40 p-8 text-center">
-          <h2 className="break-keep text-xl font-bold text-foreground">
-            지금 바로 둘러보세요
-          </h2>
-          <p className="break-keep text-sm leading-relaxed text-muted-foreground">
-            지금 활동 중인 동아리를 확인하고 나에게 맞는 곳을 찾아보세요.
-          </p>
-          <Button asChild size="lg" className="font-bold">
-            <Link to="/clubs">
-              동아리 둘러보기
-              <ArrowRight className="size-4" />
-            </Link>
-          </Button>
-        </div>
       </div>
     </div>
   );
