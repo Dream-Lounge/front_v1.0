@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { DepartmentCombobox } from "@/components/common/DepartmentCombobox";
 import { useAuth } from "@/hooks/useAuth";
 import { api, isSessionExpiredError, type ApplicantInfoInput, type ApplicationFormResponse, type FormQuestionResponse } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -64,6 +65,8 @@ export function ClubApplication() {
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [privacyConsent, setPrivacyConsent] = useState(false);
+  const [privacyConsentError, setPrivacyConsentError] = useState(false);
 
   useEffect(() => {
     if (isAuthLoading || !id) return;
@@ -135,7 +138,8 @@ export function ClubApplication() {
         if (!active) return;
         setClubId(resolvedClubId);
         setClubName(club.name);
-        setClubCategory(club.division ?? club.club_type ?? "분과");
+        const savedCategory = club.division ?? club.club_type;
+        setClubCategory(!savedCategory || savedCategory === "기타" ? "중앙동아리" : savedCategory);
         setClubDescription(club.description ?? "동아리 지원서를 작성합니다.");
         setForm(applicationForm);
         setApplicantInfo(initialApplicantInfo);
@@ -212,12 +216,13 @@ export function ClubApplication() {
   const handleSubmit = async () => {
     const isApplicantInfoValid = validateApplicantInfo();
     const areAnswersValid = validate();
-    if (!id || !form || mode === "view" || !isApplicantInfoValid || !areAnswersValid) return;
+    setPrivacyConsentError(!privacyConsent);
+    if (!id || !form || mode === "view" || !isApplicantInfoValid || !areAnswersValid || !privacyConsent) return;
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      if (mode === "create") await api.createApplication(form.id, buildAnswers(), false, buildApplicantInfo());
-      else await api.patchApplication(id, buildAnswers(), buildApplicantInfo(), false);
+      if (mode === "create") await api.createApplication(form.id, buildAnswers(), false, buildApplicantInfo(), true);
+      else await api.patchApplication(id, buildAnswers(), buildApplicantInfo(), false, true);
       toast.success("지원서가 성공적으로 제출되었습니다.");
       navigate(user ? `/users/${user.studentId}/applications` : `/club/${clubId}`);
     } catch (error) {
@@ -294,11 +299,43 @@ export function ClubApplication() {
               <FieldGroup className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <ApplicantFieldInput label="학번" field="studentId" value={applicantInfo.studentId} error={applicantErrors.studentId} readOnly={isReadOnly} inputMode="numeric" maxLength={10} placeholder="학번 10자리" onChange={(value) => setApplicantField("studentId", value.replace(/\D/g, ""))} />
                 <ApplicantFieldInput label="이름" field="name" value={applicantInfo.name} error={applicantErrors.name} readOnly={isReadOnly} maxLength={50} placeholder="이름" onChange={(value) => setApplicantField("name", value)} />
-                <ApplicantFieldInput label="학과" field="department" value={applicantInfo.department} error={applicantErrors.department} readOnly={isReadOnly} maxLength={100} placeholder="학과" onChange={(value) => setApplicantField("department", value)} />
+                {isReadOnly ? (
+                  <ApplicantFieldInput label="학과" field="department" value={applicantInfo.department} error={applicantErrors.department} readOnly maxLength={100} placeholder="학과" onChange={(value) => setApplicantField("department", value)} />
+                ) : (
+                  <Field>
+                    <FieldLabel>학과<span className="text-destructive">*</span></FieldLabel>
+                    <DepartmentCombobox
+                      value={applicantInfo.department}
+                      onValueChange={(value) => setApplicantField("department", value)}
+                      hasError={Boolean(applicantErrors.department)}
+                      allowCustomValue
+                      searchPlaceholder="학과 검색 또는 직접 입력..."
+                      emptyText="입력한 학과명을 직접 등록할 수 있습니다."
+                    />
+                    <p className="text-xs text-muted-foreground">목록에 없는 학과는 검색창에 직접 작성한 뒤 ‘직접 입력’을 선택해주세요.</p>
+                    {applicantErrors.department && <p className="text-sm text-destructive">{applicantErrors.department}</p>}
+                  </Field>
+                )}
                 <ApplicantFieldInput label="전화번호" field="phone" value={applicantInfo.phone} error={applicantErrors.phone} readOnly={isReadOnly} inputMode="numeric" maxLength={11} placeholder="하이픈 없이 입력" onChange={(value) => setApplicantField("phone", value.replace(/\D/g, ""))} />
                 <ApplicantFieldInput label="학년" field="grade" value={applicantInfo.grade} error={applicantErrors.grade} readOnly={isReadOnly} inputMode="numeric" maxLength={1} placeholder="예: 2" onChange={(value) => setApplicantField("grade", value.replace(/\D/g, ""))} />
               </FieldGroup>
-              {!isReadOnly && <p className="mt-5 text-xs text-muted-foreground">학번은 가입 정보로 자동 입력되며, 잘못 입력한 경우 이 신청서에서 수정할 수 있습니다.</p>}
+              {!isReadOnly && (
+                <div className="mt-6">
+                  <label className={cn("flex cursor-pointer items-start gap-3 rounded-lg border p-4 text-sm", privacyConsentError && "border-destructive bg-destructive/5")}>
+                    <input
+                      type="checkbox"
+                      checked={privacyConsent}
+                      onChange={(event) => {
+                        setPrivacyConsent(event.target.checked);
+                        if (event.target.checked) setPrivacyConsentError(false);
+                      }}
+                      className="mt-0.5 size-4 accent-primary"
+                    />
+                    <span>개인정보 수집 및 이용에 동의합니다. 해당 데이터는 동아리원 모집 종료 후 파기됩니다.</span>
+                  </label>
+                  {privacyConsentError && <p className="mt-2 text-sm text-destructive">지원서를 제출하려면 개인정보 수집 및 이용에 동의해주세요.</p>}
+                </div>
+              )}
             </CardContent>
           </Card>
 

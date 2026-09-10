@@ -9,6 +9,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isSessionExpired, setIsSessionExpired] = useState(false);
   const [managedClubs, setManagedClubs] = useState<Awaited<ReturnType<typeof api.getMyClubs>>>([]);
 
+  const refreshManagedClubs = useCallback(async () => {
+    const clubs = (await api.getMyClubs()).filter((club) => club.role === "president");
+    setManagedClubs(clubs);
+    return clubs;
+  }, []);
+
   useEffect(() => {
     let active = true;
 
@@ -95,6 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isSessionExpired,
         managedClubs,
         isClubAdmin: managedClubs.length > 0,
+        refreshManagedClubs,
         login,
         logout,
         handleSessionExpired,

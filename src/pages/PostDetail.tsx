@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { api, type PostDetailResponse, type ActiveClubItem } from "@/lib/api";
 import { toastApiError } from "@/lib/api-error";
 import { toast } from "sonner";
+import { formatKstDateTime } from "@/lib/date";
 
 export function PostDetail() {
   const { id: clubId, postId } = useParams<{ id: string; postId: string }>();
@@ -124,13 +125,7 @@ export function PostDetail() {
   }
 
   const formattedDate = post.created_at
-    ? new Date(post.created_at).toLocaleString("ko-KR", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
+    ? formatKstDateTime(post.created_at)
     : "";
 
   return (
@@ -199,13 +194,7 @@ export function PostDetail() {
             <ul className="flex flex-col gap-3">
               {post.comments.map((c) => {
                 const cDate = c.created_at
-                  ? new Date(c.created_at).toLocaleString("ko-KR", {
-                      year: "numeric",
-                      month: "2-digit",
-                      day: "2-digit",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })
+                  ? formatKstDateTime(c.created_at)
                   : "";
                 return (
                   <li key={c.id} className="flex flex-col gap-1 border-b pb-3 last:border-b-0 last:pb-0">

@@ -16,6 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import { api, type PostListItem } from "@/lib/api";
 import { toastApiError } from "@/lib/api-error";
+import { formatKstDate } from "@/lib/date";
 
 type CommunityCategory =
   | "전체글"
@@ -39,7 +40,7 @@ function mapPost(post: PostListItem): CommunityPost {
     category: post.is_notice ? "공지사항" : "자유게시판",
     title: post.title,
     author: post.author_name,
-    createdAt: new Intl.DateTimeFormat("ko-KR").format(new Date(post.created_at)),
+    createdAt: formatKstDate(post.created_at),
     comments: post.comment_count,
   };
 }

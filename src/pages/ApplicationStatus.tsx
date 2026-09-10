@@ -6,6 +6,7 @@ import { FileText } from "lucide-react";
 import type { Application } from "@/data/applications";
 import { api, type ApplicationListResponseItem } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
+import { formatKstDate } from "@/lib/date";
 
 const STATUS_BADGE_CONFIG: Record<
   Application["status"],
@@ -148,8 +149,7 @@ export function ApplicationStatus() {
           else if (item.status === "불합격") status = "rejected";
           else if (item.status === "보류") status = "held";
 
-          const date = new Date(item.submitted_time);
-          const appliedDate = `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, "0")}.${String(date.getDate()).padStart(2, "0")}`;
+          const appliedDate = formatKstDate(item.submitted_time);
 
           return {
             id: String(item.id),
@@ -157,7 +157,7 @@ export function ApplicationStatus() {
             clubId: String(item.club_id),
             clubName: item.club_name,
             clubImage: item.club_image || "/logo.svg",
-            category: item.category || "기타",
+            category: !item.category || item.category === "기타" ? "중앙동아리" : item.category,
             status,
             rawStatus: item.status,
             appliedDate,

@@ -47,7 +47,7 @@ export function Login() {
 
     const newErrors = {
       studentId: validators.studentId(studentId),
-      password: validators.password(password),
+      password: validators.loginPassword(password),
     };
 
     setErrors(newErrors);
@@ -83,7 +83,9 @@ export function Login() {
       setLoginError(false);
     }
     if (errors[field]) {
-      const hasError = validators[field](value);
+      const hasError = field === "password"
+        ? validators.loginPassword(value)
+        : validators.studentId(value);
       if (!hasError) {
         setErrors((prev) => ({ ...prev, [field]: false }));
       }
@@ -91,7 +93,9 @@ export function Login() {
   };
 
   const handleBlur = (field: "studentId" | "password", value: string) => {
-    const hasError = validators[field](value);
+    const hasError = field === "password"
+      ? validators.loginPassword(value)
+      : validators.studentId(value);
     setErrors((prev) => ({ ...prev, [field]: hasError }));
   };
 
@@ -144,12 +148,11 @@ export function Login() {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    inputMode="numeric"
-                    maxLength={4}
+                    maxLength={128}
                     value={password}
-                    placeholder="숫자 4자리를 입력해주세요"
+                    placeholder="비밀번호를 입력해주세요"
                     onChange={(e) =>
-                      handleFieldChange("password", e.target.value.replace(/\D/g, ""), setPassword)
+                      handleFieldChange("password", e.target.value, setPassword)
                     }
                     onBlur={(e) => handleBlur("password", e.target.value)}
                     className={cn(
@@ -175,7 +178,7 @@ export function Login() {
                 </div>
                 {errors.password && password && !loginError && (
                   <p className="text-sm text-destructive mt-1">
-                    {ERROR_MESSAGES.PASSWORD}
+                    {ERROR_MESSAGES.LOGIN_PASSWORD}
                   </p>
                 )}
               </Field>

@@ -37,7 +37,10 @@ export function mapClubResponse(club: ClubResponse): ClubData {
 
   return {
     title: club.name,
-    category: club.division || club.club_type || "기타",
+    category:
+      (club.division && club.division !== "기타" ? club.division : null)
+      || (club.club_type && club.club_type !== "기타" ? club.club_type : null)
+      || "중앙동아리",
     tags: club.tags.map((tag) => `#${tag.tag_value.replace(/^#/, "")}`),
     description: club.tagline || club.description || `${club.name} 동아리입니다.`,
     longDescription: club.description || `${club.name} 활동을 소개합니다.`,

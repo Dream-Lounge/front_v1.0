@@ -7,9 +7,9 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { ERROR_MESSAGES, validators } from "@/lib/validators";
+import { ERROR_MESSAGES, getPasswordError, validators } from "@/lib/validators";
 
-/** 가두모집용 간편 회원가입: 학번과 숫자 4자리 비밀번호만 입력합니다. */
+/** 간편 회원가입: 학번과 8자 이상이며 특수문자를 포함한 비밀번호만 입력합니다. */
 export function Signup() {
   const navigate = useNavigate();
   const [studentId, setStudentId] = useState("");
@@ -75,23 +75,27 @@ export function Signup() {
                 <FieldLabel htmlFor="password">비밀번호</FieldLabel>
                 <div className={cn(inputWrap, "[&_input]:pr-11")}>
                   <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input id="password" type={showPassword ? "text" : "password"} inputMode="numeric" maxLength={4} placeholder="숫자 4자리를 입력해주세요" value={password}
-                    onChange={(event) => { setPassword(numericValue(event.target.value, 4)); setErrors((previous) => ({ ...previous, password: false, passwordMismatch: false })); }}
+                  <Input id="password" type={showPassword ? "text" : "password"} maxLength={128} placeholder="최소 8자리 이상 입력해주세요" value={password}
+                    onChange={(event) => { setPassword(event.target.value); setErrors((previous) => ({ ...previous, password: false, passwordMismatch: false })); }}
                     onBlur={() => setErrors((previous) => ({ ...previous, password: validators.password(password) }))}
                     className={cn(errors.password && "border-destructive focus-visible:ring-destructive")} autoComplete="new-password" required />
                   <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-11 px-3 hover:bg-transparent" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}>
                     {showPassword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
                   </Button>
                 </div>
-                {errors.password && <p className="mt-1 text-sm text-destructive">{ERROR_MESSAGES.PASSWORD}</p>}
+                {errors.password ? (
+                  <p className="mt-1 text-sm text-destructive">{getPasswordError(password) ?? ERROR_MESSAGES.PASSWORD}</p>
+                ) : (
+                  <p className="mt-1 text-xs text-muted-foreground">최소 8자리 이상, 특수문자를 1개 이상 포함해주세요.</p>
+                )}
               </Field>
 
               <Field>
                 <FieldLabel htmlFor="passwordConfirm">비밀번호 확인</FieldLabel>
                 <div className={inputWrap}>
                   <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input id="passwordConfirm" type="password" inputMode="numeric" maxLength={4} placeholder="비밀번호 4자리를 다시 입력해주세요" value={passwordConfirm}
-                    onChange={(event) => { const value = numericValue(event.target.value, 4); setPasswordConfirm(value); setErrors((previous) => ({ ...previous, passwordConfirm: false, passwordMismatch: password !== value })); }}
+                  <Input id="passwordConfirm" type="password" maxLength={128} placeholder="비밀번호를 다시 입력해주세요" value={passwordConfirm}
+                    onChange={(event) => { const value = event.target.value; setPasswordConfirm(value); setErrors((previous) => ({ ...previous, passwordConfirm: false, passwordMismatch: password !== value })); }}
                     onBlur={() => setErrors((previous) => ({ ...previous, passwordConfirm: validators.passwordConfirm(passwordConfirm), passwordMismatch: Boolean(passwordConfirm) && password !== passwordConfirm }))}
                     className={cn((errors.passwordConfirm || errors.passwordMismatch) && "border-destructive focus-visible:ring-destructive")} autoComplete="new-password" required />
                 </div>

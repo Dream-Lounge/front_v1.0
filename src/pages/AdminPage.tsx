@@ -9,7 +9,6 @@ import {
   Save,
   CirclePlus,
   Search,
-  SlidersHorizontal,
   Bold,
   Italic,
   Underline,
@@ -23,6 +22,8 @@ import {
   Mail,
   Phone,
   Link2,
+  Download,
+  GripVertical,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -49,6 +51,7 @@ import {
   type PostListItem,
 } from "@/lib/api";
 import { toastApiError } from "@/lib/api-error";
+import { formatKstDate, formatKstDateTime } from "@/lib/date";
 
 type AdminTab =
   | "club-register"
@@ -124,6 +127,15 @@ interface ApplicationQuestion {
 
 const APPLICATION_STATUSES = ["검토중", "합격", "불합격", "보류"] as const;
 type ApplicationStatusValue = (typeof APPLICATION_STATUSES)[number];
+type ApplicantStatusFilter = "all" | "passed" | "failed" | "submitted" | "pending";
+
+const APPLICANT_STATUS_FILTERS: { value: ApplicantStatusFilter; label: string }[] = [
+  { value: "all", label: "전체" },
+  { value: "passed", label: "합격" },
+  { value: "failed", label: "불합격" },
+  { value: "submitted", label: "검토중" },
+  { value: "pending", label: "보류" },
+];
 
 function statusFromApi(status: string): ApplicationStatusValue {
   if (status === "passed") return "합격";
@@ -147,6 +159,23 @@ interface SubmittedApplication {
   submittedAt: string;
   status: ApplicationStatusValue;
 }
+
+type ExportColumnKey =
+  | "name"
+  | "studentId"
+  | "major"
+  | "submittedAt"
+  | "status"
+  | "form";
+
+const EXPORT_COLUMNS: { key: ExportColumnKey; label: string }[] = [
+  { key: "name", label: "이름" },
+  { key: "studentId", label: "학번" },
+  { key: "major", label: "학과" },
+  { key: "submittedAt", label: "지원일시" },
+  { key: "status", label: "상태" },
+  { key: "form", label: "신청폼" },
+];
 
 const STATUS_SELECT_CLASS: Record<ApplicationStatusValue, string> = {
   합격: "bg-[#E8FAEE] text-[#14863F]",
@@ -191,11 +220,11 @@ function contactHref(link: ClubContactLink): string {
 }
 
 export function AdminPage() {
-  const { managedClubs } = useAuth();
+  const { managedClubs, refreshManagedClubs } = useAuth();
   const [selectedClubId, setSelectedClubId] = useState(managedClubs[0]?.club_id ?? "");
   const [activeTab, setActiveTab] = useState<AdminTab>("club-register");
   const [clubName, setClubName] = useState("");
-  const [clubCategory, setClubCategory] = useState("");
+  const clubCategory = "중앙동아리";
   const [clubTagline, setClubTagline] = useState("");
   const [clubDetailDescription, setClubDetailDescription] = useState("");
   const [newContactValue, setNewContactValue] = useState("");
@@ -279,11 +308,24 @@ export function AdminPage() {
   const [tags, setTags] = useState<string[]>([]);
   const [applicants, setApplicants] = useState<SubmittedApplication[]>([]);
   const [applicantQuery, setApplicantQuery] = useState("");
+  const [applicantStatusFilter, setApplicantStatusFilter] = useState<ApplicantStatusFilter>("all");
   const [applicantPage, setApplicantPage] = useState(1);
   const [applicantTotal, setApplicantTotal] = useState(0);
   const [applicantTotalPages, setApplicantTotalPages] = useState(1);
   const [selectedApplication, setSelectedApplication] = useState<AdminApplicationDetail | null>(null);
   const [reviewComment, setReviewComment] = useState("");
+
+  /** 신청서 엑셀 다운로드 — 항목 선택 다이얼로그 */
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [exportColumns, setExportColumns] = useState<Record<ExportColumnKey, boolean>>({
+    name: true,
+    studentId: true,
+    major: true,
+    submittedAt: true,
+    status: true,
+    form: true,
+  });
+  const [isExporting, setIsExporting] = useState(false);
   const [communityPosts, setCommunityPosts] = useState<PostListItem[]>([]);
   const [selectedPostIds, setSelectedPostIds] = useState<string[]>([]);
   const [isPostDialogOpen, setIsPostDialogOpen] = useState(false);
@@ -330,7 +372,6 @@ export function AdminPage() {
         const club = await api.getClub(selectedClubId);
         if (!active) return;
         setClubName(club.name);
-        setClubCategory(club.division ?? "");
         setClubTagline(club.tagline ?? "");
         setClubDetailDescription(club.description ?? "");
         setClubImageUrl(club.image_url ?? "");
@@ -388,6 +429,7 @@ export function AdminPage() {
         applicantPage,
         APPLICANTS_PER_PAGE,
         applicantQuery,
+        applicantStatusFilter === "all" ? "" : applicantStatusFilter,
       ).then((result) => {
         if (!active) return;
         setApplicants(result.items.map((row) => ({
@@ -395,7 +437,7 @@ export function AdminPage() {
           name: row.user_name,
           studentId: row.user_student_id,
           major: row.applicant_department ?? "—",
-          submittedAt: row.submitted_at ? new Intl.DateTimeFormat("ko-KR").format(new Date(row.submitted_at)) : "—",
+          submittedAt: row.submitted_at ? formatKstDate(row.submitted_at) : "—",
           status: statusFromApi(row.status),
         })));
         setApplicantTotal(result.total);
@@ -408,7 +450,7 @@ export function AdminPage() {
       active = false;
       window.clearTimeout(timer);
     };
-  }, [applicantPage, applicantQuery, selectedClubId]);
+  }, [applicantPage, applicantQuery, applicantStatusFilter, selectedClubId]);
 
   const safeApplicantPage = Math.min(applicantPage, applicantTotalPages);
   const pagedApplicants = applicants;
@@ -508,7 +550,11 @@ export function AdminPage() {
   };
 
   const handleQuestionPointerDown = (event: React.PointerEvent<HTMLLIElement>, questionId: string) => {
-    if (event.button !== 0 || (event.target as HTMLElement).closest("button, input, label, select, textarea")) return;
+    const target = event.target as HTMLElement;
+    const isDragHandle = Boolean(target.closest("[data-drag-handle]"));
+    if (event.button !== 0) return;
+    if (event.pointerType === "touch" && !isDragHandle) return;
+    if (!isDragHandle && target.closest("button, input, label, select, textarea")) return;
     clearQuestionLongPress();
     suppressQuestionClickRef.current = false;
     pressStartPointRef.current = { x: event.clientX, y: event.clientY };
@@ -643,7 +689,7 @@ export function AdminPage() {
         name: clubName.trim(),
         tagline: clubTagline.trim() || null,
         description: clubDetailDescription.trim() || null,
-        division: clubCategory.trim() || null,
+        division: "중앙동아리",
         contact_email: firstEmail,
         contact_phone: firstPhone,
         open_chat_url: firstUrl,
@@ -664,7 +710,10 @@ export function AdminPage() {
       const updatedClub = isNewClub
         ? await api.createClub(payload)
         : await api.updateClub(selectedClubId, payload);
-      if (isNewClub) setSelectedClubId(updatedClub.id);
+      if (isNewClub) {
+        setSelectedClubId(updatedClub.id);
+        await refreshManagedClubs();
+      }
       setClubImageUrl(updatedClub.image_url ?? "");
       const persistedContactLinks = updatedClub.contact_links?.length
         ? updatedClub.contact_links
@@ -695,6 +744,123 @@ export function AdminPage() {
       setReviewComment(application.admin_comment ?? "");
     } catch (error) {
       toastApiError(error, "신청서 상세를 불러오지 못했습니다.");
+    }
+  };
+
+  /** 선택한 항목만 담아 신청서 목록을 엑셀(.xlsx)로 다운로드합니다. */
+  const exportApplications = async () => {
+    if (!selectedClubId) return;
+    const selectedKeys = EXPORT_COLUMNS.filter((column) => exportColumns[column.key]).map(
+      (column) => column.key,
+    );
+    if (selectedKeys.length === 0) {
+      toast.error("다운로드할 항목을 하나 이상 선택해주세요.");
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const items: AdminApplicationDetail[] = [];
+      const exportPageSize = 200;
+      let exportPage = 1;
+      while (true) {
+        const response = await api.getClubApplicationsExport(
+          selectedClubId,
+          exportPage,
+          exportPageSize,
+          applicantQuery,
+          applicantStatusFilter === "all" ? "" : applicantStatusFilter,
+        );
+        items.push(...response.items);
+        if (exportPage >= response.pages || response.items.length === 0) break;
+        exportPage += 1;
+      }
+
+      const formTextById = new Map<string, string>();
+      if (selectedKeys.includes("form")) {
+        items.forEach((detail) => {
+          const snapshotQuestionById = new Map(
+            (detail.form_snapshot?.questions ?? []).map((question) => [question.id, question]),
+          );
+          const text = [...detail.answers]
+            .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+            .map((answer, index) => {
+              const questionText = answer.question_text
+                ?? snapshotQuestionById.get(answer.question_id)?.question_text
+                ?? "질문을 불러올 수 없음";
+              return `${index + 1}. ${questionText}\n   : ${answer.answer_text ?? ""}`;
+            })
+            .join("\n\n");
+          formTextById.set(detail.id, text);
+        });
+      }
+
+      const cellValue = (item: (typeof items)[number], key: ExportColumnKey): string => {
+        switch (key) {
+          case "name":
+            return item.user_name;
+          case "studentId":
+            return item.user_student_id;
+          case "major":
+            return item.applicant_department ?? "—";
+          case "submittedAt":
+            return item.submitted_at ? formatKstDateTime(item.submitted_at) : "—";
+          case "status":
+            return statusFromApi(item.status);
+          case "form":
+            return formTextById.get(item.id) ?? "";
+        }
+      };
+
+      const columns = EXPORT_COLUMNS.filter((column) => exportColumns[column.key]);
+      // 무거운 엑셀 생성 라이브러리는 실제 다운로드 시점에만 불러와 초기 번들 크기를 줄인다.
+      const { default: ExcelJS } = await import("exceljs");
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("신청서");
+      worksheet.columns = columns.map((column) => ({
+        header: column.label,
+        key: column.key,
+        width: column.key === "form" ? 50 : 18,
+      }));
+      worksheet.getRow(1).font = { bold: true };
+      items.forEach((item) => {
+        worksheet.addRow(
+          Object.fromEntries(columns.map((column) => [column.key, cellValue(item, column.key)])),
+        );
+      });
+      worksheet.eachRow((row) => {
+        row.eachCell((cell) => {
+          cell.alignment = { vertical: "top", wrapText: true };
+        });
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = URL.createObjectURL(blob);
+      const dateLabel = new Intl.DateTimeFormat("ko-KR", {
+        timeZone: "Asia/Seoul",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      })
+        .format(new Date())
+        .replace(/\. /g, "")
+        .replace(".", "");
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${clubName.trim() || "신청서"}_신청서_${dateLabel}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+
+      setIsExportDialogOpen(false);
+    } catch (error) {
+      toastApiError(error, "엑셀 다운로드에 실패했습니다.");
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -759,7 +925,7 @@ export function AdminPage() {
             <div>
               <div>
                 <h3 className="text-base font-bold text-slate-800">
-                  동아리 이름 <span className="text-red-500">*</span>
+                  동아리 명 <span className="text-red-500">*</span>
                 </h3>
                 <Input
                   value={clubName}
@@ -772,7 +938,7 @@ export function AdminPage() {
 
             <div className="mt-5">
               <h3 className="text-base font-bold text-slate-800">
-                대표 포스터 한 장{" "}
+                대표 이미지{" "}
                 <span className="text-sm font-medium text-slate-400">(권장: 1920×1080px)</span>
               </h3>
               <button
@@ -798,16 +964,26 @@ export function AdminPage() {
             </div>
 
             <section className="mt-5">
-              <h3 className="text-base font-bold text-slate-800">모집 상태</h3>
-              <label className="mt-3 inline-flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3">
-                <input
-                  type="checkbox"
+              <h3 id="club-recruiting-label" className="text-base font-bold text-slate-800">
+                모집 상태
+              </h3>
+              <div className="mt-3 flex items-center gap-3">
+                <Switch
+                  id="club-recruiting"
+                  aria-labelledby="club-recruiting-label"
                   checked={clubIsRecruiting}
-                  onChange={(event) => setClubIsRecruiting(event.target.checked)}
-                  className="size-4 accent-primary"
+                  onCheckedChange={setClubIsRecruiting}
                 />
-                <span className="text-sm font-semibold text-slate-700">모집중</span>
-              </label>
+                <label
+                  htmlFor="club-recruiting"
+                  className={cn(
+                    "cursor-pointer text-sm font-semibold",
+                    clubIsRecruiting ? "text-primary" : "text-slate-500",
+                  )}
+                >
+                  {clubIsRecruiting ? "모집중" : "모집 마감"}
+                </label>
+              </div>
             </section>
 
             <section className="mt-5">
@@ -819,6 +995,7 @@ export function AdminPage() {
                 <Input
                   value={newContactValue}
                   onChange={(e) => setNewContactValue(e.target.value)}
+                  maxLength={2048}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
@@ -857,6 +1034,7 @@ export function AdminPage() {
                         updateContactLink(link.id, "value", e.target.value)
                       }
                       onBlur={() => normalizeContactLink(link.id)}
+                      maxLength={2048}
                       placeholder="이메일, 전화번호 또는 링크"
                       aria-label="연락처 내용"
                       className="h-10 flex-1 bg-white"
@@ -947,15 +1125,27 @@ export function AdminPage() {
                     openEditQuestion(question);
                   }}
                   className={cn(
-                    "cursor-grab select-none rounded-xl border bg-white px-5 py-4 transition-all active:cursor-grabbing",
+                    "select-none rounded-xl border bg-white px-5 py-4 transition-all sm:cursor-grab sm:active:cursor-grabbing",
                     draggingQuestionId === question.id
                       ? "z-10 border-primary opacity-70 shadow-md ring-2 ring-primary/20"
                       : "border-slate-200 hover:border-slate-300 hover:shadow-sm",
                   )}
-                  style={{ touchAction: draggingQuestionId ? "none" : "pan-y" }}
+                  style={{ touchAction: "pan-y" }}
                 >
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0 flex items-center gap-3">
+                      <button
+                        type="button"
+                        data-drag-handle
+                        aria-label={`${question.title} 문항 순서 이동`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          suppressQuestionClickRef.current = false;
+                        }}
+                        className="inline-flex size-8 shrink-0 touch-none cursor-grab items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 active:cursor-grabbing"
+                      >
+                        <GripVertical className="size-5" />
+                      </button>
                       <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-bold text-slate-600">
                         {index + 1}
                       </span>
@@ -993,7 +1183,7 @@ export function AdminPage() {
 
             {questions.length > 1 && (
               <p className="mt-3 text-xs text-slate-500">
-                문항 클릭 시 수정 가능하며, 문항을 누른 뒤 드래그하면 순서를 자유롭게 변경할 수 있습니다.
+                문항 클릭 시 수정 가능하며, 이동 핸들을 0.3초간 누른 뒤 드래그하면 순서를 자유롭게 변경할 수 있습니다.
               </p>
             )}
 
@@ -1035,13 +1225,29 @@ export function AdminPage() {
                   className="h-full w-full border-0 bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
                 />
               </label>
-              <button
-                type="button"
-                className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 sm:w-11"
-                aria-label="필터"
+              <label className="relative h-11 w-full sm:w-[118px]">
+                <span className="sr-only">지원 상태 필터</span>
+                <select
+                  value={applicantStatusFilter}
+                  onChange={(event) => {
+                    setApplicantStatusFilter(event.target.value as ApplicantStatusFilter);
+                    setApplicantPage(1);
+                  }}
+                  className="h-full w-full appearance-none rounded-full border-2 border-[#86B4EA] bg-white pl-4 pr-9 text-sm font-bold text-[#165BAA] shadow-sm outline-none transition-colors hover:border-[#5E9DDF] focus:ring-2 focus:ring-[#86B4EA]/30"
+                >
+                  {APPLICANT_STATUS_FILTERS.map((filter) => (
+                    <option key={filter.value} value={filter.value}>{filter.label}</option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-[#315D91]" aria-hidden />
+              </label>
+              <Button
+                onClick={() => setIsExportDialogOpen(true)}
+                className="h-11 w-full rounded-xl bg-[#1F4F95] px-5 text-white shadow-sm hover:bg-[#183F79] sm:w-auto"
               >
-                <SlidersHorizontal className="size-4" />
-              </button>
+                <Download className="mr-1 size-4" />
+                다운로드
+              </Button>
             </div>
           </div>
 
@@ -1377,7 +1583,7 @@ export function AdminPage() {
                       </div>
                     </td>
                     <td className="px-4 text-sm text-slate-600">{post.author_name}</td>
-                    <td className="px-4 text-sm text-slate-500">{new Intl.DateTimeFormat("ko-KR").format(new Date(post.created_at))}</td>
+                    <td className="px-4 text-sm text-slate-500">{formatKstDate(post.created_at)}</td>
                     <td className="px-4 text-sm text-slate-500">{post.comment_count}</td>
                     <td className="px-4">
                       <div className="flex items-center justify-center gap-3 text-slate-400">
@@ -1459,7 +1665,7 @@ export function AdminPage() {
                           className={cn(
                             "flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors",
                             isActive
-                              ? "border-r-2 border-primary bg-[#EAF1FC] text-primary"
+                              ? "bg-[#EAF1FC] text-primary"
                               : "text-slate-600 hover:bg-slate-100",
                           )}
                         >
@@ -1741,8 +1947,16 @@ export function AdminPage() {
             <div className="relative aspect-[3/1] w-full overflow-hidden rounded-xl bg-slate-100">
               {clubImageUrl ? <img src={clubImageUrl} alt={`${clubName || "동아리"} 배너`} className="h-full w-full object-cover" /> : <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-slate-400"><ImageIcon className="size-7" aria-hidden /><span className="text-xs font-medium">등록된 배너 이미지 없음</span></div>}
               <div className="absolute top-3 right-3">
-                <Badge size="detail" className="bg-primary font-semibold text-primary-foreground">
-                  모집중
+                <Badge
+                  size="detail"
+                  className={cn(
+                    "font-semibold",
+                    clubIsRecruiting
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-slate-500 text-white",
+                  )}
+                >
+                  {clubIsRecruiting ? "모집중" : "모집 마감"}
                 </Badge>
               </div>
             </div>
@@ -1881,6 +2095,41 @@ export function AdminPage() {
             <Textarea value={postContent} onChange={(event) => setPostContent(event.target.value)} placeholder="내용을 입력해주세요." className="min-h-40 resize-none" />
           </div>
           <DialogFooter><Button variant="ghost" onClick={() => setIsPostDialogOpen(false)}>취소</Button><Button onClick={() => void createCommunityPost()} disabled={!postTitle.trim() || !postContent.trim()}>등록</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+        <DialogContent className="sm:max-w-sm" aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle>신청서 다운로드</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-2">
+            {EXPORT_COLUMNS.map((column) => (
+              <label
+                key={column.key}
+                className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                <input
+                  type="checkbox"
+                  checked={exportColumns[column.key]}
+                  onChange={(event) =>
+                    setExportColumns((prev) => ({ ...prev, [column.key]: event.target.checked }))
+                  }
+                  className="size-4 rounded border-slate-300 accent-primary"
+                />
+                {column.label}
+              </label>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsExportDialogOpen(false)}>
+              취소
+            </Button>
+            <Button onClick={() => void exportApplications()} disabled={isExporting}>
+              <Download className="mr-1 size-4" />
+              {isExporting ? "다운로드 중..." : "다운로드"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

@@ -13,7 +13,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Check, ChevronsUpDown, GraduationCap, Search } from "lucide-react";
+import { Check, ChevronsUpDown, GraduationCap, PencilLine, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DEPARTMENTS } from "@/data/departments";
 
@@ -32,7 +32,11 @@ interface DepartmentComboboxProps {
   emptyText?: string;
   /** 회원가입 시안: 좌측 학위모자·우측 검색 아이콘·플레이스홀더 문구 */
   variant?: "default" | "signup";
+  /** 목록에 없는 학과명을 검색창에서 직접 입력할 수 있는지 여부 */
+  allowCustomValue?: boolean;
 }
+
+const DEPARTMENT_NAMES = DEPARTMENTS.flatMap((collegeGroup) => collegeGroup.departments);
 
 /**
  * 학과 선택 콤보박스 컴포넌트
@@ -48,16 +52,30 @@ export function DepartmentCombobox({
   searchPlaceholder = "학과 검색...",
   emptyText = "검색 결과가 없습니다.",
   variant = "default",
+  allowCustomValue = false,
 }: DepartmentComboboxProps) {
   const [open, setOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
+
+  const customValue = searchValue.trim();
+  const matchesExistingDepartment = DEPARTMENT_NAMES.some(
+    (department) => department.toLocaleLowerCase("ko-KR") === customValue.toLocaleLowerCase("ko-KR"),
+  );
 
   const handleSelect = (selectedValue: string) => {
     onValueChange(selectedValue);
+    setSearchValue("");
     setOpen(false);
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) setSearchValue("");
+      }}
+    >
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -92,11 +110,24 @@ export function DepartmentCombobox({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start">
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
         <Command>
-          <CommandInput placeholder={searchPlaceholder} />
+          <CommandInput
+            value={searchValue}
+            onValueChange={setSearchValue}
+            maxLength={100}
+            placeholder={searchPlaceholder}
+          />
           <CommandList>
             <CommandEmpty>{emptyText}</CommandEmpty>
+            {allowCustomValue && customValue && !matchesExistingDepartment && (
+              <CommandGroup heading="직접 입력">
+                <CommandItem value={customValue} onSelect={() => handleSelect(customValue)}>
+                  <PencilLine className="mr-2 h-4 w-4" />
+                  <span className="min-w-0 truncate">“{customValue}” 직접 입력</span>
+                </CommandItem>
+              </CommandGroup>
+            )}
             {DEPARTMENTS.map((collegeGroup) => (
               <CommandGroup
                 key={collegeGroup.college}

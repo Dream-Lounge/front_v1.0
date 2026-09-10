@@ -4,7 +4,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, Plus, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatEndDateLabel } from "@/lib/date";
 import { FEATURES } from "@/config/features";
 import { api } from "@/lib/api";
 
@@ -12,8 +11,7 @@ interface RecruitingClub {
   id: string;
   title: string;
   category: string;
-  endDate: string;
-  deadlineText: string;
+  isRecruiting: boolean;
   image: string;
   textColor: string;
   aiRecommended: boolean;
@@ -37,12 +35,11 @@ export function RecruitingSection() {
       .then((clubs) => {
         if (!active) return;
         setRecruitingClubs(
-          clubs.filter((club) => club.is_recruiting).map((club) => ({
+          clubs.map((club) => ({
             id: club.id,
             title: club.name,
-            category: club.division || club.club_type || "기타",
-            endDate: club.recruit_end?.replaceAll("-", ".") || "상시모집",
-            deadlineText: "",
+            category: "중앙동아리",
+            isRecruiting: club.is_recruiting,
             image: club.image_url || "/logo.svg",
             textColor: "text-white",
             aiRecommended: false,
@@ -50,7 +47,10 @@ export function RecruitingSection() {
         );
         const counts = new Map<string, number>();
         clubs.forEach((club) => {
-          const division = club.division || club.club_type || "기타";
+          const savedDivision = club.division || club.club_type;
+          const division = !savedDivision || savedDivision === "기타"
+            ? "중앙동아리"
+            : savedDivision;
           counts.set(division, (counts.get(division) || 0) + 1);
         });
         setDivisions(Array.from(counts, ([name, count]) => ({ name, count })));
@@ -98,7 +98,7 @@ export function RecruitingSection() {
         {/* 섹션 헤더 */}
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-2xl font-extrabold text-gray-900 sm:text-3xl">
-            모집중인 동아리
+            중앙 동아리
           </h2>
           <button
             type="button"
@@ -149,8 +149,15 @@ export function RecruitingSection() {
                     <h3 className="mb-0.5 line-clamp-1 text-base font-bold drop-shadow-md">
                       {club.title}
                     </h3>
-                    <p className="text-xs opacity-90 drop-shadow-sm">
-                      {formatEndDateLabel(club.endDate)}
+                    <p className="inline-flex items-center gap-1.5 text-xs opacity-90 drop-shadow-sm">
+                      <span
+                        className={cn(
+                          "size-1.5 shrink-0 rounded-full",
+                          club.isRecruiting ? "bg-emerald-400" : "bg-slate-400",
+                        )}
+                        aria-hidden
+                      />
+                      {club.isRecruiting ? "모집중" : "모집마감"}
                     </p>
                   </div>
                 </CardContent>

@@ -38,3 +38,34 @@ export function formatRecruitmentLabel(label: string): string {
   if (!m) return label;
   return recruitDeadlineLabel(REFERENCE_YEAR, Number(m[1]), Number(m[2]));
 }
+
+/** API의 timezone 없는 UTC 문자열도 UTC로 해석합니다. */
+export function parseApiUtcDate(value: string): Date {
+  const normalized = value.includes("T") ? value : value.replace(" ", "T");
+  const hasTimezone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(normalized);
+  return new Date(hasTimezone ? normalized : `${normalized}Z`);
+}
+
+export function formatKstDate(value: string): string {
+  const date = parseApiUtcDate(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+export function formatKstDateTime(value: string): string {
+  const date = parseApiUtcDate(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}

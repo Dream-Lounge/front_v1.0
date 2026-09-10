@@ -33,6 +33,15 @@ export function Header() {
         navigate(query ? `/clubs?search=${encodeURIComponent(query)}` : "/clubs");
     };
 
+    const handleLogout = async () => {
+        try {
+            await logout();
+        } finally {
+            // SPA 상태를 재사용하지 않도록 새 문서로 홈을 불러온다.
+            window.location.replace("/");
+        }
+    };
+
     return (
         <header className="w-full flex justify-center bg-background shadow-sm sticky top-0 z-50">
             {/** 한 줄 헤더: 로고 | 카테고리(네비) | 검색·유저 */}
@@ -112,10 +121,7 @@ export function Header() {
                                             관리자
                                         </Link>
                                         <button
-                                            onClick={() => {
-                                                logout();
-                                                navigate("/", { replace: true });
-                                            }}
+                                            onClick={() => void handleLogout()}
                                             className="w-full px-3 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-sm transition-colors text-left"
                                         >
                                             로그아웃

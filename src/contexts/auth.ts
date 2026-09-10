@@ -8,6 +8,7 @@ export interface AuthContextType {
   isSessionExpired: boolean;
   managedClubs: ActiveClubItem[];
   isClubAdmin: boolean;
+  refreshManagedClubs: () => Promise<ActiveClubItem[]>;
   login: (studentId: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   handleSessionExpired: () => void;

@@ -4,7 +4,6 @@ import { LayoutGrid, List } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { formatRecruitmentLabel } from "@/lib/date";
 import { mapClubResponse, type ClubData } from "@/data/clubs";
 import {
   CLUB_CATEGORY_FILTERS,
@@ -22,10 +21,8 @@ function toClubRow(club: ClubResponse): ClubRow {
   const data = mapClubResponse(club);
   const division = CLUB_DIVISION_KEYS.includes(club.division as ClubDivision)
     ? club.division as ClubDivision
-    : "학과";
-  const recruitmentLabel = club.recruit_end
-    ? `~${Number(club.recruit_end.slice(5, 7))}월 ${Number(club.recruit_end.slice(8, 10))}일`
-    : club.activity_period || "상시모집";
+    : "중앙동아리";
+  const recruitmentLabel = "";
   const today = new Date().toISOString().slice(0, 10);
 
   return {
@@ -310,9 +307,6 @@ function ClubCard({
               />
               {club.recruitment.status}
             </span>
-            <span className="shrink-0 font-semibold drop-shadow-sm">
-              {formatRecruitmentLabel(club.recruitmentLabel)}
-            </span>
           </div>
         </div>
       </ClubThumb>
@@ -358,12 +352,6 @@ function ClubListRow({
           {club.recruitment.status}
         </span>
 
-        {/* 마감 */}
-        <span className="shrink-0 text-sm font-semibold tabular-nums text-primary">
-          {club.deadlineToday
-            ? "오늘까지"
-            : formatRecruitmentLabel(club.recruitmentLabel)}
-        </span>
       </div>
 
       {/* 태그 */}

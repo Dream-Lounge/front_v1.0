@@ -593,10 +593,11 @@ class ApiClient {
     answers: ApplicationAnswerInput[],
     isDraft: boolean,
     applicantInfo: ApplicantInfoInput,
+    privacyConsent = false,
   ): Promise<ApiApplicationDetail> {
     return this.request<ApiApplicationDetail>("/applications", {
       method: "POST",
-      body: JSON.stringify({ form_id: formId, is_draft: isDraft, answers, ...applicantInfo }),
+      body: JSON.stringify({ form_id: formId, is_draft: isDraft, privacy_consent: privacyConsent, answers, ...applicantInfo }),
     });
   }
 
@@ -605,10 +606,11 @@ class ApiClient {
     answers: ApplicationAnswerInput[],
     applicantInfo: ApplicantInfoInput,
     isDraft?: boolean,
+    privacyConsent = false,
   ): Promise<ApiApplicationDetail> {
     return this.request<ApiApplicationDetail>(`/applications/${encodeURIComponent(applicationId)}`, {
       method: "PATCH",
-      body: JSON.stringify({ answers, ...applicantInfo, ...(isDraft === undefined ? {} : { is_draft: isDraft }) }),
+      body: JSON.stringify({ answers, privacy_consent: privacyConsent, ...applicantInfo, ...(isDraft === undefined ? {} : { is_draft: isDraft }) }),
     });
   }
 
@@ -633,9 +635,11 @@ class ApiClient {
     page = 1,
     size = 20,
     query = "",
+    status = "",
   ): Promise<PageResponse<AdminApplicationListItem>> {
     const params = new URLSearchParams({ page: String(page), size: String(size) });
     if (query.trim()) params.set("q", query.trim());
+    if (status) params.set("status", status);
     return this.request<PageResponse<AdminApplicationListItem>>(
       `/clubs/${encodeURIComponent(clubId)}/applications?${params.toString()}`,
     );
@@ -655,6 +659,21 @@ class ApiClient {
     return this.request<AdminApplicationListItem>(
       `/clubs/${encodeURIComponent(clubId)}/applications/${encodeURIComponent(applicationId)}/status`,
       { method: "PATCH", body: JSON.stringify({ status }) },
+    );
+  }
+
+  getClubApplicationsExport(
+    clubId: string,
+    page = 1,
+    size = 100,
+    query = "",
+    status = "",
+  ): Promise<PageResponse<AdminApplicationDetail>> {
+    const params = new URLSearchParams({ page: String(page), size: String(size) });
+    if (query.trim()) params.set("q", query.trim());
+    if (status) params.set("status", status);
+    return this.request<PageResponse<AdminApplicationDetail>>(
+      `/clubs/${encodeURIComponent(clubId)}/applications/export?${params.toString()}`,
     );
   }
 

@@ -8,12 +8,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 import { api, type ApiApplicationListItem } from "@/lib/api";
 import { toastApiError } from "@/lib/api-error";
+import { formatKstDateTime } from "@/lib/date";
 
 function formatSavedAt(value: string): string {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "저장 시간 없음" : new Intl.DateTimeFormat("ko-KR", {
-    year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
-  }).format(date);
+  const formatted = formatKstDateTime(value);
+  return formatted === "—" ? "저장 시간 없음" : formatted;
 }
 
 export function ApplicationDrafts() {
