@@ -33,7 +33,31 @@ button:disabled { cursor: not-allowed; }
 .dream-hero-controls { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 2px; color: #6d737b; font-size: .875rem; }
 .dream-hero-controls>span { display: flex; align-items: center; gap: 12px; }
 .dream-hero-controls strong { color: #1f2429; font-weight: 600; }
-.dream-control-divider { height: 1px; width: 24px; background: #c8cdd1; }
+/* 배너가 넘어간 방향으로 현재 번호가 밀려 들어온다. */
+.dream-hero-count { display: inline-block; min-width: 1.6em; text-align: center; }
+.dream-hero-count[data-direction="next"] { animation: dream-count-next .42s cubic-bezier(.22,1,.36,1); }
+.dream-hero-count[data-direction="prev"] { animation: dream-count-prev .42s cubic-bezier(.22,1,.36,1); }
+@keyframes dream-count-next {
+ from { opacity: 0; transform: translateY(9px); }
+ to { opacity: 1; transform: translateY(0); }
+}
+@keyframes dream-count-prev {
+ from { opacity: 0; transform: translateY(-9px); }
+ to { opacity: 1; transform: translateY(0); }
+}
+/* 다음 배너까지 남은 시간을 보여주는 프로그레스 트랙 */
+.dream-control-divider { height: 2px; width: 40px; background: #dfe3e7; border-radius: 999px; overflow: hidden; position: relative; }
+.dream-control-progress {
+ position: absolute; inset: 0; background: var(--primary); border-radius: inherit;
+ transform: scaleX(0); transform-origin: left center;
+ animation-name: dream-progress; animation-timing-function: linear; animation-fill-mode: forwards;
+}
+/* 자동 재생이 멈추면(호버·포커스·일시정지) 차오르던 자리에서 그대로 멈춘다. */
+.dream-control-progress[data-running="false"] { animation-play-state: paused; }
+@keyframes dream-progress {
+ from { transform: scaleX(0); }
+ to { transform: scaleX(1); }
+}
 .dream-hero-controls button { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; }
 .dream-hero-controls button:hover { background: #eaf2fc; color: #0875e1; }
 .dream-recruiting { grid-template-columns: minmax(0,1fr) 292px; gap: 36px; padding-top: 36px; border-top: 1px solid #e5e7e9; }
