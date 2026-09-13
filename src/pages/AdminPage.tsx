@@ -370,6 +370,9 @@ export function AdminPage() {
   const autoScrollFrameRef = useRef<number | null>(null);
   const canAutoScrollUpRef = useRef(false);
   const canAutoScrollDownRef = useRef(false);
+  const mobileAutoScrollRemainderRef = useRef(0);
+  const mobileAutoScrollLastFrameRef = useRef(0);
+  const mobileAutoScrollDirectionRef = useRef(0);
   const dragStartQuestionsRef = useRef<ApplicationQuestion[]>([]);
   const latestQuestionsRef = useRef<ApplicationQuestion[]>([]);
   const suppressQuestionClickRef = useRef(false);
@@ -625,25 +628,62 @@ export function AdminPage() {
       window.cancelAnimationFrame(autoScrollFrameRef.current);
       autoScrollFrameRef.current = null;
     }
+    mobileAutoScrollRemainderRef.current = 0;
+    mobileAutoScrollLastFrameRef.current = 0;
+    mobileAutoScrollDirectionRef.current = 0;
   };
 
   const startQuestionAutoScroll = () => {
     stopQuestionAutoScroll();
-    const tick = () => {
+    mobileAutoScrollLastFrameRef.current = performance.now();
+    const tick = (now: number) => {
       if (!draggingQuestionIdRef.current) {
         autoScrollFrameRef.current = null;
         return;
       }
       const clientY = dragPointerClientYRef.current;
       if (clientY !== null) {
-        const edgeSize = Math.min(90, window.innerHeight * 0.14);
         let scrollDistance = 0;
-        if (clientY < edgeSize && canAutoScrollUpRef.current) {
-          const intensity = Math.min(1, Math.max(0, (edgeSize - clientY) / edgeSize));
-          scrollDistance = -(0.35 + intensity * 1.45);
-        } else if (clientY > window.innerHeight - edgeSize && canAutoScrollDownRef.current) {
-          const intensity = Math.min(1, Math.max(0, (clientY - (window.innerHeight - edgeSize)) / edgeSize));
-          scrollDistance = 0.35 + intensity * 1.45;
+        if (pressPointerTypeRef.current === "touch") {
+          const viewportTop = window.visualViewport?.offsetTop ?? 0;
+          const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+          const viewportBottom = viewportTop + viewportHeight;
+          const edgeSize = Math.min(120, viewportHeight * 0.2);
+          let direction = 0;
+          let intensity = 0;
+          if (clientY < viewportTop + edgeSize && canAutoScrollUpRef.current) {
+            direction = -1;
+            intensity = Math.min(1, Math.max(0, (viewportTop + edgeSize - clientY) / edgeSize));
+          } else if (clientY > viewportBottom - edgeSize && canAutoScrollDownRef.current) {
+            direction = 1;
+            intensity = Math.min(1, Math.max(0, (clientY - (viewportBottom - edgeSize)) / edgeSize));
+          }
+
+          if (direction !== mobileAutoScrollDirectionRef.current) {
+            mobileAutoScrollRemainderRef.current = 0;
+            mobileAutoScrollDirectionRef.current = direction;
+          }
+          const elapsedMs = Math.min(34, Math.max(0, now - mobileAutoScrollLastFrameRef.current));
+          mobileAutoScrollLastFrameRef.current = now;
+          if (direction !== 0) {
+            const pixelsPerSecond = 24 + intensity * 48;
+            const accumulatedDistance = mobileAutoScrollRemainderRef.current
+              + direction * pixelsPerSecond * (elapsedMs / 1000);
+            scrollDistance = accumulatedDistance < 0
+              ? Math.ceil(accumulatedDistance)
+              : Math.floor(accumulatedDistance);
+            mobileAutoScrollRemainderRef.current = accumulatedDistance - scrollDistance;
+          }
+        } else {
+          // PC의 기존 드래그 스크롤 감도와 동작은 그대로 유지한다.
+          const edgeSize = Math.min(90, window.innerHeight * 0.14);
+          if (clientY < edgeSize && canAutoScrollUpRef.current) {
+            const intensity = Math.min(1, Math.max(0, (edgeSize - clientY) / edgeSize));
+            scrollDistance = -(0.35 + intensity * 1.45);
+          } else if (clientY > window.innerHeight - edgeSize && canAutoScrollDownRef.current) {
+            const intensity = Math.min(1, Math.max(0, (clientY - (window.innerHeight - edgeSize)) / edgeSize));
+            scrollDistance = 0.35 + intensity * 1.45;
+          }
         }
         if (scrollDistance !== 0) {
           const previousScrollY = window.scrollY;
