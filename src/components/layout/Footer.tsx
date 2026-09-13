@@ -1,11 +1,12 @@
 import { Link } from "react-router-dom";
-import { Facebook, Instagram, Youtube, Twitter } from "lucide-react";
+import { Instagram } from "lucide-react";
 
 const SOCIAL_LINKS = [
-    { Icon: Facebook, href: "#", label: "Facebook" },
-    { Icon: Instagram, href: "#", label: "Instagram" },
-    { Icon: Youtube, href: "#", label: "Youtube" },
-    { Icon: Twitter, href: "#", label: "Twitter" },
+    {
+        Icon: Instagram,
+        href: "https://www.instagram.com/dreamlounge_cju",
+        label: "Instagram",
+    },
 ];
 
 const FOOTER_SECTIONS = [
