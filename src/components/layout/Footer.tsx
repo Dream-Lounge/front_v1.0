@@ -9,30 +9,20 @@ const SOCIAL_LINKS = [
     },
 ];
 
+/**
+ * 실제로 구현된 페이지만 연결합니다.
+ * 팀 소개·공지사항·자주 묻는 질문·신고하기·개발자 센터·이용약관·
+ * 개인정보처리방침·쿠키정책은 아직 페이지가 없어 404로 이어지므로 제외했습니다.
+ * 해당 페이지가 만들어지면 여기에 다시 추가하면 됩니다.
+ */
 const FOOTER_SECTIONS = [
     {
         title: "소개",
-        links: [
-            { to: "/about", text: "서비스 소개" },
-            { to: "/team", text: "팀 소개" },
-        ],
+        links: [{ to: "/about", text: "서비스 소개" }],
     },
     {
         title: "고객지원",
-        links: [
-            { to: "/notice", text: "공지사항" },
-            { to: "/faq", text: "자주 묻는 질문" },
-            { to: "/report", text: "신고하기" },
-            { to: "/developers", text: "개발자 센터" },
-        ],
-    },
-    {
-        title: "정책",
-        links: [
-            { to: "/terms", text: "이용약관" },
-            { to: "/privacy", text: "개인정보처리방침" },
-            { to: "/cookies", text: "쿠키정책" },
-        ],
+        links: [{ to: "/support", text: "문의하기" }],
     },
 ];
 
