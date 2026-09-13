@@ -1,103 +1,71 @@
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import Autoplay from "embla-carousel-autoplay";
-import {
-    Carousel,
-    CarouselContent,
-    CarouselItem,
-    type CarouselApi,
-} from "@/components/ui/carousel";
-import { cn } from "@/lib/utils";
+import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
+import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 
-interface HeroSlide {
-    id: number;
-    image: string;
-    alt: string;
-}
-
-const SLIDES: HeroSlide[] = [
-    {
-        id: 1,
-        image: "/images/banner_test_open.png",
-        alt: "드림라운지 테스트 오픈 2026.06.12~06.30",
-    },
-    {
-        id: 2,
-        image: "/images/banner_ai_chat.png",
-        alt: "어떤 질문이든 답변해드려요 - AI 챗봇 드림 컨시어지",
-    },
+/** href가 있는 배너는 클릭하면 해당 주소로 이동합니다. */
+const SLIDES: { image: string; alt: string; href?: string }[] = [
+  { image: "/images/banner_test_open.png", alt: "동아리 가입부터 관리까지 한번에! 드림라운지 테스트 오픈 - 9월 15일부터 10월 10일 오후 11시 59분까지" },
+  {
+    image: "/images/banner_survey.png",
+    alt: "서비스 만족도 설문조사 참여하기 - 기간 2026.9.15~10.18, 추첨을 통해 소정의 상품을 드립니다",
+    href: "https://docs.google.com/forms/d/e/1FAIpQLSd0KzW-SAgVZMEOFX0ZKz8Zy1zVCN92S8HRFSdGXlILwakhEg/viewform",
+  },
 ];
 
-/**
- * 히어로 캐러셀 컴포넌트
- * - 메인 페이지 상단에 위치하여 주요 프로모션이나 인기 동아리 정보를 슬라이드 형태로 제공합니다.
- * - 자동 재생 기능과 페이지네이션 도트를 포함합니다.
- */
 export function HeroCarousel() {
-    const [api, setApi] = useState<CarouselApi>();
-    const plugin = useRef(
-        Autoplay({ delay: 4000, stopOnInteraction: false })
-    );
+  const [api, setApi] = useState<CarouselApi>();
+  const [current, setCurrent] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const autoplay = useRef(Autoplay({ delay: 6500, playOnInit: false, stopOnInteraction: false, stopOnMouseEnter: true, stopOnFocusIn: true }));
 
-    return (
-        <section className="w-full rounded-2xl overflow-hidden shadow-lg relative group">
-            <Carousel
-                setApi={setApi}
-                plugins={[plugin.current]}
-                className="w-full"
-                opts={{
-                    loop: true,
-                }}
-            >
-                <CarouselContent className="ml-0">
-                    {SLIDES.map((slide) => (
-                        <CarouselItem key={slide.id} className="pl-0">
-                            <img
-                                src={slide.image}
-                                alt={slide.alt}
-                                className="w-full h-auto block"
-                                draggable={false}
-                            />
-                        </CarouselItem>
-                    ))}
-                </CarouselContent>
-            </Carousel>
+  useEffect(() => {
+    if (!api) return;
+    const select = () => setCurrent(api.selectedScrollSnap());
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const motion = () => { if (media.matches) autoplay.current.stop(); else autoplay.current.play(); };
+    const onPlay = () => setPlaying(true);
+    const onStop = () => setPlaying(false);
+    api.on("select", select);
+    api.on("autoplay:play", onPlay);
+    api.on("autoplay:stop", onStop);
+    media.addEventListener("change", motion);
+    motion();
+    return () => { api.off("select", select); api.off("autoplay:play", onPlay); api.off("autoplay:stop", onStop); media.removeEventListener("change", motion); };
+  }, [api]);
 
-            {/** 페이지네이션: 현재 슬라이드 위치 표시 (우측 하단) */}
-            <CarouselDots api={api} count={SLIDES.length} />
-        </section>
-    );
-}
-
-/**
- * 캐러셀 페이지네이션 도트 컴포넌트
- * - 현재 활성화된 슬라이드를 시각적으로 표시합니다.
- */
-function CarouselDots({ api, count }: { api: CarouselApi | undefined, count: number }) {
-    const [current, setCurrent] = useState(0);
-
-    useEffect(() => {
-        if (!api) return;
-        const onSelect = () => {
-            setCurrent(api.selectedScrollSnap());
-        };
-        api.on("select", onSelect);
-        onSelect();
-        return () => {
-            api.off("select", onSelect);
-        };
-    }, [api]);
-
-    return (
-        <div className="absolute bottom-5 right-5 sm:bottom-8 sm:right-8 z-20 flex gap-1.5">
-            {Array.from({ length: count }).map((_, index) => (
-                <div
-                    key={index}
-                    className={cn(
-                        "h-2 rounded-full transition-all duration-300",
-                        current === index ? "w-8 bg-white" : "w-2 bg-white/50"
-                    )}
-                />
-            ))}
-        </div>
-    )
+  return (
+    <section className="dream-hero" aria-label="드림라운지 소식">
+      <Carousel setApi={setApi} plugins={[autoplay.current]} opts={{ loop: true }}>
+        <CarouselContent className="ml-0">
+          {SLIDES.map((slide, index) => (
+            <CarouselItem key={slide.image} className="pl-0" aria-hidden={index !== current}>
+              <div className="dream-hero-slide">
+                {slide.href ? (
+                  <a
+                    href={slide.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block"
+                    /* 현재 보이지 않는 슬라이드는 aria-hidden이므로 탭 순서에서도 제외한다. */
+                    tabIndex={index === current ? undefined : -1}
+                  >
+                    <img className="dream-hero-banner" src={slide.image} alt={slide.alt} draggable={false} />
+                  </a>
+                ) : (
+                  <img className="dream-hero-banner" src={slide.image} alt={slide.alt} draggable={false} />
+                )}
+              </div>
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+      </Carousel>
+      <div className="dream-hero-controls">
+        <button type="button" aria-label="이전 소식" onClick={() => api?.scrollPrev()}><ChevronLeft size={16} /></button>
+        <span aria-live="off"><strong>{String(current + 1).padStart(2, "0")}</strong><span className="dream-control-divider" />{String(SLIDES.length).padStart(2, "0")}</span>
+        <button type="button" aria-label="다음 소식" onClick={() => api?.scrollNext()}><ChevronRight size={16} /></button>
+        <button type="button" aria-label={playing ? "소식 자동 재생 일시정지" : "소식 자동 재생"} onClick={() => playing ? autoplay.current.stop() : autoplay.current.play()}>{playing ? <Pause size={14} /> : <Play size={14} />}</button>
+      </div>
+    </section>
+  );
 }

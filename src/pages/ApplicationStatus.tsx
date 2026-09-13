@@ -157,7 +157,7 @@ export function ApplicationStatus() {
             clubId: String(item.club_id),
             clubName: item.club_name,
             clubImage: item.club_image || "/logo.svg",
-            category: !item.category || item.category === "기타" ? "중앙동아리" : item.category,
+            category: item.category || "기타",
             status,
             rawStatus: item.status,
             appliedDate,

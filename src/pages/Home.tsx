@@ -7,7 +7,7 @@ import { RecruitingSection } from "@/components/home/RecruitingSection";
  */
 export function Home() {
   return (
-    <div className="flex flex-col gap-8 sm:gap-14 pb-16 sm:pb-20">
+    <div className="dream-home flex flex-col gap-8 sm:gap-14 pb-16 sm:pb-20">
       {/** 히어로 섹션: 주요 프로모션 및 동아리 홍보 슬라이드 */}
       <HeroCarousel />
 

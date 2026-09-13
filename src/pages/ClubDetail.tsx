@@ -58,7 +58,7 @@ export function ClubDetail() {
           </section>
           <aside className="space-y-5 pt-2">
           <Card className="border-border shadow-sm">
-            <CardContent className="pt-6">
+            <CardContent>
               <Button
                 onClick={() => navigate(`/club/${id}/apply`)}
                 disabled={!isRecruiting || isOwnClub || isAuthLoading}

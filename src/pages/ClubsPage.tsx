@@ -4,6 +4,7 @@ import { LayoutGrid, List } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { formatRecruitmentLabel } from "@/lib/date";
 import { mapClubResponse, type ClubData } from "@/data/clubs";
 import {
   CLUB_CATEGORY_FILTERS,
@@ -17,12 +18,21 @@ type ViewMode = "card" | "list";
 
 type ClubRow = { id: string } & Omit<ClubData, "coverImage"> & ClubDirectoryMeta;
 
+function divisionFromSearchParams(searchParams: URLSearchParams): "all" | ClubDivision {
+  const requestedDivision = searchParams.get("division");
+  return CLUB_DIVISION_KEYS.includes(requestedDivision as ClubDivision)
+    ? requestedDivision as ClubDivision
+    : "all";
+}
+
 function toClubRow(club: ClubResponse): ClubRow {
   const data = mapClubResponse(club);
   const division = CLUB_DIVISION_KEYS.includes(club.division as ClubDivision)
     ? club.division as ClubDivision
-    : "중앙동아리";
-  const recruitmentLabel = "";
+    : "학과";
+  const recruitmentLabel = club.recruit_end
+    ? `~${Number(club.recruit_end.slice(5, 7))}월 ${Number(club.recruit_end.slice(8, 10))}일`
+    : club.activity_period || "상시모집";
   const today = new Date().toISOString().slice(0, 10);
 
   return {
@@ -53,9 +63,13 @@ const RECRUITMENT_STATUS_DOT_CLASS: Record<string, string> = {
 export function ClubsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [division, setDivision] = useState<"all" | ClubDivision>("all");
+  const [division, setDivision] = useState<"all" | ClubDivision>(() => divisionFromSearchParams(searchParams));
   const [view, setView] = useState<ViewMode>("card");
   const [allRows, setAllRows] = useState<ClubRow[]>([]);
+
+  useEffect(() => {
+    setDivision(divisionFromSearchParams(searchParams));
+  }, [searchParams]);
 
   useEffect(() => {
     let active = true;
@@ -84,7 +98,7 @@ export function ClubsPage() {
     division === "all" ? "전체 동아리" : `${activeFilterLabel} 동아리`;
 
   return (
-    <div className="mx-auto w-full max-w-7xl pb-16 sm:pb-20">
+    <div className="dream-directory mx-auto w-full max-w-7xl pb-16 sm:pb-20">
       <div className="flex flex-col gap-6 rounded-2xl bg-muted/45 px-3 py-6 sm:gap-8 sm:px-6 sm:py-8">
         {/* 섹션 헤더 + 뷰 전환 */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -307,6 +321,9 @@ function ClubCard({
               />
               {club.recruitment.status}
             </span>
+            <span className="shrink-0 font-semibold drop-shadow-sm">
+              {formatRecruitmentLabel(club.recruitmentLabel)}
+            </span>
           </div>
         </div>
       </ClubThumb>
@@ -350,6 +367,13 @@ function ClubListRow({
             aria-hidden
           />
           {club.recruitment.status}
+        </span>
+
+        {/* 마감 */}
+        <span className="shrink-0 text-sm font-semibold tabular-nums text-primary">
+          {club.deadlineToday
+            ? "오늘까지"
+            : formatRecruitmentLabel(club.recruitmentLabel)}
         </span>
 
       </div>

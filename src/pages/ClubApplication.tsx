@@ -138,8 +138,7 @@ export function ClubApplication() {
         if (!active) return;
         setClubId(resolvedClubId);
         setClubName(club.name);
-        const savedCategory = club.division ?? club.club_type;
-        setClubCategory(!savedCategory || savedCategory === "기타" ? "중앙동아리" : savedCategory);
+        setClubCategory(club.division ?? club.club_type ?? "분과");
         setClubDescription(club.description ?? "동아리 지원서를 작성합니다.");
         setForm(applicationForm);
         setApplicantInfo(initialApplicantInfo);

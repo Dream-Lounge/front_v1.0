@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, Plus, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatEndDateLabel } from "@/lib/date";
 import { FEATURES } from "@/config/features";
 import { api } from "@/lib/api";
 
@@ -11,7 +12,8 @@ interface RecruitingClub {
   id: string;
   title: string;
   category: string;
-  isRecruiting: boolean;
+  endDate: string;
+  deadlineText: string;
   image: string;
   textColor: string;
   aiRecommended: boolean;
@@ -26,20 +28,26 @@ export function RecruitingSection() {
   const navigate = useNavigate();
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const [recruitingClubs, setRecruitingClubs] = useState<RecruitingClub[]>([]);
   const [divisions, setDivisions] = useState<Array<{ name: string; count: number }>>([]);
 
   useEffect(() => {
     let active = true;
+    setLoading(true);
+    setFailed(false);
     api.getClubs()
       .then((clubs) => {
         if (!active) return;
         setRecruitingClubs(
-          clubs.map((club) => ({
+          clubs.filter((club) => club.is_recruiting).map((club) => ({
             id: club.id,
             title: club.name,
-            category: "중앙동아리",
-            isRecruiting: club.is_recruiting,
+            category: club.division || club.club_type || "기타",
+            endDate: club.recruit_end?.replaceAll("-", ".") || "상시모집",
+            deadlineText: "",
             image: club.image_url || "/logo.svg",
             textColor: "text-white",
             aiRecommended: false,
@@ -47,19 +55,20 @@ export function RecruitingSection() {
         );
         const counts = new Map<string, number>();
         clubs.forEach((club) => {
-          const savedDivision = club.division || club.club_type;
-          const division = !savedDivision || savedDivision === "기타"
-            ? "중앙동아리"
-            : savedDivision;
+          const division = club.division || club.club_type || "기타";
           counts.set(division, (counts.get(division) || 0) + 1);
         });
         setDivisions(Array.from(counts, ([name, count]) => ({ name, count })));
       })
-      .catch((error) => console.error("Failed to load recruiting clubs", error));
+      .catch((error) => {
+        console.error("Failed to load recruiting clubs", error);
+        if (active) setFailed(true);
+      })
+      .finally(() => { if (active) setLoading(false); });
     return () => {
       active = false;
     };
-  }, []);
+  }, [attempt]);
 
   const [canScrollPrev, setCanScrollPrev] = useState(false);
   const [canScrollNext, setCanScrollNext] = useState(false);
@@ -81,7 +90,7 @@ export function RecruitingSection() {
       el.removeEventListener("scroll", updateScrollState);
       window.removeEventListener("resize", updateScrollState);
     };
-  }, []);
+  }, [recruitingClubs]);
 
   const scrollPrev = () => {
     scrollRef.current?.scrollBy({ left: -360, behavior: "smooth" });
@@ -92,13 +101,13 @@ export function RecruitingSection() {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-12">
+    <div className="dream-recruiting grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-12">
       {/* 좌측 컬럼: 모집중인 동아리 (타이틀 + 가로 스크롤 카드) */}
       <div className="flex min-w-0 flex-col gap-6">
         {/* 섹션 헤더 */}
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-2xl font-extrabold text-gray-900 sm:text-3xl">
-            중앙 동아리
+            모집중인 동아리
           </h2>
           <button
             type="button"
@@ -114,17 +123,27 @@ export function RecruitingSection() {
         <div className="relative min-w-0 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
           <div
             ref={scrollRef}
-            className="flex items-stretch gap-3 overflow-x-auto scroll-smooth lg:h-full [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="dream-club-track flex items-stretch gap-3 overflow-x-auto scroll-smooth lg:h-full [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
+            {loading || failed || recruitingClubs.length === 0 ? (
+              <div className="dream-data-state" role="status">
+                <p>{loading ? "동아리 정보를 불러오는 중입니다." : failed ? "동아리 정보를 불러오지 못했습니다." : "현재 모집 중인 동아리가 없습니다."}</p>
+                {failed && <button type="button" onClick={() => setAttempt((value) => value + 1)}>다시 불러오기</button>}
+              </div>
+            ) : null}
             {recruitingClubs.map((club) => (
               <Card
                 key={club.id}
                 className={cn(
                   club.textColor,
-                  "relative aspect-[3/4] h-36 w-auto shrink-0 overflow-hidden border-none py-0 gap-0 shadow-sm sm:h-56 lg:h-full",
+                  "dream-club-card relative aspect-[3/4] h-36 w-auto shrink-0 overflow-hidden border-none py-0 gap-0 shadow-sm sm:h-56 lg:h-full",
                   "group cursor-pointer",
                   "transition-all duration-300 hover:-translate-y-1 hover:shadow-lg",
                 )}
+                role="link"
+                tabIndex={0}
+                aria-label={`${club.title} 동아리 상세 보기`}
+                onKeyDown={(event) => { if (event.key === "Enter") navigate(`/club/${club.id}`); }}
                 onClick={() => navigate(`/club/${club.id}`)}
               >
                 <div
@@ -149,15 +168,8 @@ export function RecruitingSection() {
                     <h3 className="mb-0.5 line-clamp-1 text-base font-bold drop-shadow-md">
                       {club.title}
                     </h3>
-                    <p className="inline-flex items-center gap-1.5 text-xs opacity-90 drop-shadow-sm">
-                      <span
-                        className={cn(
-                          "size-1.5 shrink-0 rounded-full",
-                          club.isRecruiting ? "bg-emerald-400" : "bg-slate-400",
-                        )}
-                        aria-hidden
-                      />
-                      {club.isRecruiting ? "모집중" : "모집마감"}
+                    <p className="text-xs opacity-90 drop-shadow-sm">
+                      {formatEndDateLabel(club.endDate)}
                     </p>
                   </div>
                 </CardContent>
@@ -201,13 +213,14 @@ export function RecruitingSection() {
         </div>
 
         {/* 분과 목록 */}
-        <aside className="flex w-full shrink-0 flex-col lg:w-96">
+        <aside className="dream-divisions flex w-full shrink-0 flex-col lg:w-96">
+          {(loading || failed || divisions.length === 0) && <p className="py-6 text-sm text-muted-foreground" role="status">{loading ? "분과 정보를 불러오는 중입니다." : failed ? "분과 정보를 불러오지 못했습니다." : "등록된 분과가 없습니다."}</p>}
           {divisions.map((division) => (
             <button
               key={division.name}
               type="button"
               className="group flex items-center justify-between border-b border-gray-100 py-4 text-left transition-colors hover:bg-gray-50/60"
-              onClick={() => navigate("/clubs")}
+              onClick={() => navigate(`/clubs?division=${encodeURIComponent(division.name)}`)}
             >
               <span className="font-bold text-gray-800 group-hover:text-gray-900">
                 {division.name}

@@ -8,7 +8,7 @@ import { LogIn, Eye, EyeOff, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { validators, ERROR_MESSAGES } from "@/lib/validators";
 import { useAuth } from "@/hooks/useAuth";
-import { isSessionExpiredError } from "@/lib/api";
+import { ApiRequestError, isSessionExpiredError } from "@/lib/api";
 
 /**
  * 로그인 페이지 컴포넌트
@@ -39,7 +39,7 @@ export function Login() {
   });
 
   // 로그인 실패 에러 상태
-  const [loginError, setLoginError] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   // 폼 제출 핸들러
   const handleSubmit = async (e: React.FormEvent) => {
@@ -58,7 +58,7 @@ export function Login() {
     }
 
     setIsLoading(true);
-    setLoginError(false);
+    setLoginError(null);
 
     try {
       await login(studentId, password);
@@ -66,7 +66,13 @@ export function Login() {
     } catch (error) {
       // 세션 만료는 전역 다이얼로그가 안내하므로 로그인 정보 오류로
       // 중복 표시하지 않는다.
-      if (!isSessionExpiredError(error)) setLoginError(true);
+      if (!isSessionExpiredError(error)) {
+        setLoginError(
+          error instanceof ApiRequestError && error.status === 429
+            ? error.message
+            : "학번 또는 비밀번호가 일치하지 않습니다",
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -80,7 +86,7 @@ export function Login() {
   ) => {
     setter(value);
     if (loginError) {
-      setLoginError(false);
+      setLoginError(null);
     }
     if (errors[field]) {
       const hasError = field === "password"
@@ -185,7 +191,7 @@ export function Login() {
 
               {loginError && (
                 <p className="text-sm text-destructive text-center">
-                  학번 또는 비밀번호가 일치하지 않습니다
+                  {loginError}
                 </p>
               )}
 

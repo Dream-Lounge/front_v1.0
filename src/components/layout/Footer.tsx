@@ -1,37 +1,28 @@
 import { Link } from "react-router-dom";
-import { Facebook, Instagram, Youtube, Twitter } from "lucide-react";
+import { Instagram } from "lucide-react";
 
 const SOCIAL_LINKS = [
-    { Icon: Facebook, href: "#", label: "Facebook" },
-    { Icon: Instagram, href: "#", label: "Instagram" },
-    { Icon: Youtube, href: "#", label: "Youtube" },
-    { Icon: Twitter, href: "#", label: "Twitter" },
+    {
+        Icon: Instagram,
+        href: "https://www.instagram.com/dreamlounge_cju",
+        label: "Instagram",
+    },
 ];
 
+/**
+ * 실제로 구현된 페이지만 연결합니다.
+ * 팀 소개·공지사항·자주 묻는 질문·신고하기·개발자 센터·이용약관·
+ * 개인정보처리방침·쿠키정책은 아직 페이지가 없어 404로 이어지므로 제외했습니다.
+ * 해당 페이지가 만들어지면 여기에 다시 추가하면 됩니다.
+ */
 const FOOTER_SECTIONS = [
     {
         title: "소개",
-        links: [
-            { to: "/about", text: "서비스 소개" },
-            { to: "/team", text: "팀 소개" },
-        ],
+        links: [{ to: "/about", text: "서비스 소개" }],
     },
     {
         title: "고객지원",
-        links: [
-            { to: "/notice", text: "공지사항" },
-            { to: "/faq", text: "자주 묻는 질문" },
-            { to: "/report", text: "신고하기" },
-            { to: "/developers", text: "개발자 센터" },
-        ],
-    },
-    {
-        title: "정책",
-        links: [
-            { to: "/terms", text: "이용약관" },
-            { to: "/privacy", text: "개인정보처리방침" },
-            { to: "/cookies", text: "쿠키정책" },
-        ],
+        links: [{ to: "/support", text: "문의하기" }],
     },
 ];
 
@@ -42,7 +33,7 @@ const FOOTER_SECTIONS = [
  */
 export function Footer() {
     return (
-        <footer className="w-full flex justify-center bg-stone-900 text-stone-100">
+        <footer className="dream-footer w-full flex justify-center bg-stone-900 text-stone-100">
             <div className="w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-10 flex flex-col gap-8 items-start relative box-border">
                 {/** 상단 영역: 로고, 서비스 소개, 소셜 링크 및 사이트맵 */}
                 <div className="w-full flex flex-col lg:flex-row gap-8 lg:gap-13 items-start relative shrink-0">
@@ -56,8 +47,8 @@ export function Footer() {
 
                         {/** 서비스 설명: 플랫폼의 비전/슬로건 표시 */}
                         <div className="relative shrink-0 w-full h-10 font-kr text-sm text-stone-400">
-                            <p className="leading-5">드림라운지는 대학생들의 꿈과 열정을</p>
-                            <p className="leading-5">이어주는 동아리 플랫폼입니다.</p>
+                            <p className="leading-5">대학생들의 꿈과 열정을 이어주는</p>
+                            <p className="leading-5">동아리 신청·관리 웹 서비스</p>
                         </div>
 
                         {/** 소셜 미디어 링크: 외부 SNS 페이지로 연결 */}

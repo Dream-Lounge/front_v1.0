@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import { Search, User } from "lucide-react";
 import { Input } from "../ui/input";
 import {
@@ -23,7 +23,7 @@ const NAV_ITEMS = [
  * - 반응형 디자인을 고려하여 제작되었습니다.
  */
 export function Header() {
-    const { user, isAuthenticated, logout } = useAuth();
+    const { user, isAuthenticated, isClubAdmin, logout } = useAuth();
     const navigate = useNavigate();
     const [search, setSearch] = useState("");
 
@@ -43,32 +43,32 @@ export function Header() {
     };
 
     return (
-        <header className="w-full flex justify-center bg-background shadow-sm sticky top-0 z-50">
+        <header className="dream-header w-full flex justify-center bg-background shadow-sm sticky top-0 z-50">
             {/** 한 줄 헤더: 로고 | 카테고리(네비) | 검색·유저 */}
-            <div className="w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-2 flex items-center gap-2 sm:gap-4 min-h-12">
+            <div className="dream-header-inner w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-2 flex items-center gap-2 sm:gap-4 min-h-12">
                 {/** 로고 */}
-                <Link to="/" className="h-10 sm:h-12 shrink-0 flex items-center">
+                <Link to="/" className="dream-brand h-10 sm:h-12 shrink-0 flex items-center">
                     <img src="/logo.svg" alt="Dream Lounge Logo" className="h-full w-auto" draggable={false} />
                 </Link>
 
                 {/** 메인 네비게이션: 검색 Input(h-9)과 동일 높이로 하단선 정렬 */}
                 <nav
-                    className="flex-1 min-w-0 h-9 flex items-center gap-1 sm:gap-2 md:gap-4 overflow-x-auto overflow-y-hidden whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                    className="dream-nav flex-1 min-w-0 h-9 flex items-center gap-1 sm:gap-2 md:gap-4 overflow-x-auto overflow-y-hidden whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                     aria-label="주요 메뉴"
                 >
                     {NAV_ITEMS.map(({ label, to }) => (
-                        <Link
+                        <NavLink
                             key={label}
                             to={to}
                             className="font-kr text-sm sm:text-base font-bold text-foreground hover:text-primary transition-colors shrink-0 box-border h-9 inline-flex items-center px-2 sm:px-3 border-b-2 border-transparent hover:border-primary"
                         >
                             {label}
-                        </Link>
+                        </NavLink>
                     ))}
                 </nav>
 
                 {/** 검색 + 사용자 (높이 h-9로 네비와 맞춤) */}
-                <div className="shrink-0 flex items-center gap-2 sm:gap-3 h-9">
+                <div className="dream-header-actions shrink-0 flex items-center gap-2 sm:gap-3 h-9">
                     {/** 검색 바 (sm 이상) */}
                     <form
                         className="hidden sm:block w-[min(100%,14rem)] md:w-56 lg:max-w-sm"
@@ -79,6 +79,7 @@ export function Header() {
                             <Input
                                 className="bg-background pl-9 h-full rounded-2xl w-full"
                                 id="search-input"
+                                aria-label="동아리 검색"
                                 placeholder="동아리 검색"
                                 type="search"
                                 value={search}
@@ -90,7 +91,7 @@ export function Header() {
                     {/** 사용자 메뉴 */}
                     <Popover>
                         <PopoverTrigger asChild>
-                            <button className="size-9 flex items-center justify-center rounded-full hover:bg-muted transition-colors cursor-pointer">
+                            <button aria-label="사용자 메뉴" className="dream-user size-9 flex items-center justify-center rounded-full hover:bg-muted transition-colors cursor-pointer">
                                 <User className="size-5 text-foreground" />
                             </button>
                         </PopoverTrigger>
@@ -114,12 +115,14 @@ export function Header() {
                                         >
                                             임시저장함
                                         </Link>
-                                        <Link
-                                            to="/admin"
-                                            className="w-full px-3 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-sm transition-colors text-left"
-                                        >
-                                            관리자
-                                        </Link>
+                                        {isClubAdmin && (
+                                            <Link
+                                                to="/admin"
+                                                className="w-full px-3 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-sm transition-colors text-left"
+                                            >
+                                                관리자
+                                            </Link>
+                                        )}
                                         <button
                                             onClick={() => void handleLogout()}
                                             className="w-full px-3 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-sm transition-colors text-left"

@@ -6,7 +6,6 @@ import {
   FileText,
   Image as ImageIcon,
   Trash2,
-  Save,
   CirclePlus,
   Search,
   Bold,
@@ -52,6 +51,7 @@ import {
 } from "@/lib/api";
 import { toastApiError } from "@/lib/api-error";
 import { formatKstDate, formatKstDateTime } from "@/lib/date";
+import { CLUB_DIVISION_KEYS } from "@/data/clubDirectoryMeta";
 
 type AdminTab =
   | "club-register"
@@ -224,7 +224,7 @@ export function AdminPage() {
   const [selectedClubId, setSelectedClubId] = useState(managedClubs[0]?.club_id ?? "");
   const [activeTab, setActiveTab] = useState<AdminTab>("club-register");
   const [clubName, setClubName] = useState("");
-  const clubCategory = "중앙동아리";
+  const [clubCategory, setClubCategory] = useState("");
   const [clubTagline, setClubTagline] = useState("");
   const [clubDetailDescription, setClubDetailDescription] = useState("");
   const [newContactValue, setNewContactValue] = useState("");
@@ -372,6 +372,7 @@ export function AdminPage() {
         const club = await api.getClub(selectedClubId);
         if (!active) return;
         setClubName(club.name);
+        setClubCategory(club.division ?? "");
         setClubTagline(club.tagline ?? "");
         setClubDetailDescription(club.description ?? "");
         setClubImageUrl(club.image_url ?? "");
@@ -672,6 +673,10 @@ export function AdminPage() {
       toast.error("동아리 이름을 입력해주세요.");
       return;
     }
+    if (!clubCategory) {
+      toast.error("분과를 선택해주세요.");
+      return;
+    }
     const normalizedContactLinks = contactLinks.map(({ label, value }) => ({
       type: detectContactType(value),
       label: label.trim(),
@@ -689,7 +694,7 @@ export function AdminPage() {
         name: clubName.trim(),
         tagline: clubTagline.trim() || null,
         description: clubDetailDescription.trim() || null,
-        division: "중앙동아리",
+        division: clubCategory.trim() || null,
         contact_email: firstEmail,
         contact_phone: firstPhone,
         open_chat_url: firstUrl,
@@ -937,6 +942,37 @@ export function AdminPage() {
             </div>
 
             <div className="mt-5">
+              <h3 id="club-division-label" className="text-base font-bold text-slate-800">
+                분과 <span className="text-red-500">*</span>
+              </h3>
+              <div className="relative mt-3 w-full max-w-[280px]">
+                <select
+                  id="club-division"
+                  aria-labelledby="club-division-label"
+                  value={clubCategory}
+                  onChange={(event) => setClubCategory(event.target.value)}
+                  className={cn(
+                    "h-10 w-full cursor-pointer appearance-none rounded-md border border-input bg-white px-3 pr-9 text-sm outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                    !clubCategory && "text-muted-foreground",
+                  )}
+                >
+                  <option value="" disabled>
+                    분과를 선택해주세요
+                  </option>
+                  {CLUB_DIVISION_KEYS.map((division) => (
+                    <option key={division} value={division} className="text-foreground">
+                      {division}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                  aria-hidden
+                />
+              </div>
+            </div>
+
+            <div className="mt-5">
               <h3 className="text-base font-bold text-slate-800">
                 대표 이미지{" "}
                 <span className="text-sm font-medium text-slate-400">(권장: 1920×1080px)</span>
@@ -962,29 +998,6 @@ export function AdminPage() {
                 className="mt-3 min-h-[120px] resize-y bg-white"
               />
             </div>
-
-            <section className="mt-5">
-              <h3 id="club-recruiting-label" className="text-base font-bold text-slate-800">
-                모집 상태
-              </h3>
-              <div className="mt-3 flex items-center gap-3">
-                <Switch
-                  id="club-recruiting"
-                  aria-labelledby="club-recruiting-label"
-                  checked={clubIsRecruiting}
-                  onCheckedChange={setClubIsRecruiting}
-                />
-                <label
-                  htmlFor="club-recruiting"
-                  className={cn(
-                    "cursor-pointer text-sm font-semibold",
-                    clubIsRecruiting ? "text-primary" : "text-slate-500",
-                  )}
-                >
-                  {clubIsRecruiting ? "모집중" : "모집 마감"}
-                </label>
-              </div>
-            </section>
 
             <section className="mt-5">
               <h3 className="text-base font-bold text-slate-800">
@@ -1052,9 +1065,31 @@ export function AdminPage() {
               </div>
             </section>
 
+            <section className="mt-5">
+              <h3 id="club-recruiting-label" className="text-base font-bold text-slate-800">
+                모집 상태
+              </h3>
+              <div className="mt-3 flex items-center gap-3">
+                <Switch
+                  id="club-recruiting"
+                  aria-labelledby="club-recruiting-label"
+                  checked={clubIsRecruiting}
+                  onCheckedChange={setClubIsRecruiting}
+                />
+                <label
+                  htmlFor="club-recruiting"
+                  className={cn(
+                    "cursor-pointer text-sm font-semibold",
+                    clubIsRecruiting ? "text-primary" : "text-slate-500",
+                  )}
+                >
+                  {clubIsRecruiting ? "모집중" : "모집 마감"}
+                </label>
+              </div>
+            </section>
+
             <div className="mt-8 flex justify-end">
               <Button onClick={() => void saveClub()} className="h-10 w-full rounded-lg px-5 sm:w-auto">
-                <Save className="mr-1 size-4" />
                 저장
               </Button>
             </div>
@@ -1189,7 +1224,6 @@ export function AdminPage() {
 
             <div className="mt-8 flex justify-end">
               <Button onClick={() => toast.success("변경사항이 저장되었습니다.")} className="h-10 w-full rounded-lg px-5 sm:w-auto">
-                <Save className="mr-1 size-4" />
                 변경사항 저장
               </Button>
             </div>
@@ -1522,7 +1556,6 @@ export function AdminPage() {
 
             <div className="mt-8 flex justify-end">
               <Button onClick={() => void saveClub()} className="h-10 w-full rounded-lg bg-[#0A5CB5] px-6 text-white hover:bg-[#0A4F9D] sm:w-auto">
-                <Save className="mr-1.5 size-4" />
                 페이지 설정 저장
               </Button>
             </div>

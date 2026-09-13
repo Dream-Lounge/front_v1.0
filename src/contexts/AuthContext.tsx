@@ -28,7 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     api.restoreSession()
       .then(async (currentUser) => {
         let clubs: Awaited<ReturnType<typeof api.getMyClubs>> = [];
-        if (currentUser) {
+        if (currentUser?.isClubAdmin) {
           try {
             clubs = await api.getMyClubs();
           } catch (error) {
@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const response = await api.login(studentId, password);
     let clubs: Awaited<ReturnType<typeof api.getMyClubs>> = [];
     try {
-      clubs = await api.getMyClubs();
+      if (response.user.isClubAdmin) clubs = await api.getMyClubs();
     } catch (error) {
       // 로그인 직후 쿠키가 전달되지 않는 경우 전역 만료 처리가 이미
       // 실행된다. 이 오류를 삼킨 뒤 사용자를 다시 설정하지 않는다.
@@ -100,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         isSessionExpired,
         managedClubs,
-        isClubAdmin: managedClubs.length > 0,
+        isClubAdmin: user?.isClubAdmin ?? false,
         refreshManagedClubs,
         login,
         logout,

@@ -16,6 +16,7 @@ export interface User {
   name: string;
   department: string | null;
   phone: string | null;
+  isClubAdmin: boolean;
 }
 
 interface ApiUser {
@@ -24,6 +25,7 @@ interface ApiUser {
   name: string;
   department: string | null;
   phone: string | null;
+  is_club_admin: boolean;
 }
 
 export interface LoginResponse {
@@ -344,6 +346,7 @@ function mapUser(apiUser: ApiUser): User {
     name: apiUser.name,
     department: apiUser.department,
     phone: apiUser.phone,
+    isClubAdmin: apiUser.is_club_admin,
   };
 }
 
