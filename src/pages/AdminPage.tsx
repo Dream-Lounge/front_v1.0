@@ -374,6 +374,7 @@ export function AdminPage() {
   const mobileAutoScrollLastFrameRef = useRef(0);
   const mobileAutoScrollDirectionRef = useRef(0);
   const mobileAutoScrollPressureRef = useRef(0);
+  const mobileTouchScrollBlockerRef = useRef<((event: TouchEvent) => void) | null>(null);
   const dragStartQuestionsRef = useRef<ApplicationQuestion[]>([]);
   const latestQuestionsRef = useRef<ApplicationQuestion[]>([]);
   const suppressQuestionClickRef = useRef(false);
@@ -382,6 +383,13 @@ export function AdminPage() {
   const filledOptions = newOptions.map((o) => o.trim()).filter(Boolean);
   const titleError = !newTitle.trim();
   const optionsError = isChoice && filledOptions.length < 2;
+
+  useEffect(() => () => {
+    const blockTouchScroll = mobileTouchScrollBlockerRef.current;
+    if (blockTouchScroll) document.removeEventListener("touchmove", blockTouchScroll);
+    if (autoScrollFrameRef.current !== null) window.cancelAnimationFrame(autoScrollFrameRef.current);
+    if (longPressTimerRef.current !== null) window.clearTimeout(longPressTimerRef.current);
+  }, []);
 
   useEffect(() => {
     if (!selectedClubId && managedClubs[0]) setSelectedClubId(managedClubs[0].club_id);
@@ -577,6 +585,22 @@ export function AdminPage() {
     }
   };
 
+  const lockMobilePageScroll = () => {
+    if (mobileTouchScrollBlockerRef.current) return;
+    const blockTouchScroll = (event: TouchEvent) => {
+      if (event.cancelable) event.preventDefault();
+    };
+    mobileTouchScrollBlockerRef.current = blockTouchScroll;
+    document.addEventListener("touchmove", blockTouchScroll, { passive: false });
+  };
+
+  const unlockMobilePageScroll = () => {
+    const blockTouchScroll = mobileTouchScrollBlockerRef.current;
+    if (!blockTouchScroll) return;
+    document.removeEventListener("touchmove", blockTouchScroll);
+    mobileTouchScrollBlockerRef.current = null;
+  };
+
   const updateQuestionDragPosition = (clientY: number, pointerType = pressPointerTypeRef.current) => {
     const start = pressStartPointRef.current;
     const draggedId = draggingQuestionIdRef.current;
@@ -678,7 +702,7 @@ export function AdminPage() {
           const elapsedMs = Math.min(34, Math.max(0, now - mobileAutoScrollLastFrameRef.current));
           mobileAutoScrollLastFrameRef.current = now;
           if (direction !== 0) {
-            const pixelsPerSecond = 24 + intensity * 48;
+            const pixelsPerSecond = 96 + intensity * 192;
             const accumulatedDistance = mobileAutoScrollRemainderRef.current
               + direction * pixelsPerSecond * (elapsedMs / 1000);
             scrollDistance = accumulatedDistance < 0
@@ -714,6 +738,10 @@ export function AdminPage() {
     if (event.button !== 0) return;
     if (event.pointerType === "touch" && !isDragHandle) return;
     if (!isDragHandle && target.closest("button, input, label, select, textarea")) return;
+    if (event.pointerType === "touch") {
+      event.preventDefault();
+      lockMobilePageScroll();
+    }
     clearQuestionLongPress();
     suppressQuestionClickRef.current = false;
     pressStartPointRef.current = { x: event.clientX, y: event.clientY };
@@ -769,6 +797,7 @@ export function AdminPage() {
 
   const handleQuestionPointerEnd = async (event: React.PointerEvent<HTMLLIElement>) => {
     clearQuestionLongPress();
+    unlockMobilePageScroll();
     stopQuestionAutoScroll();
     dragPointerClientYRef.current = null;
     pressStartPointRef.current = null;
