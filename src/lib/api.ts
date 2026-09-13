@@ -52,6 +52,7 @@ export interface PageResponse<T> {
 
 export interface SignupRequest {
   studentId: string;
+  name: string;
   password: string;
 }
 
@@ -483,6 +484,7 @@ class ApiClient {
       method: "POST",
       body: JSON.stringify({
         student_id: data.studentId,
+        name: data.name,
         password: data.password,
       }),
     }, false);

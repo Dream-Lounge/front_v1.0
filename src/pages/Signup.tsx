@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Eye, EyeOff, Hash, Loader2, Lock } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Hash, Loader2, Lock, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -9,21 +9,23 @@ import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { ERROR_MESSAGES, getPasswordError, validators } from "@/lib/validators";
 
-/** 간편 회원가입: 학번과 8자 이상이며 특수문자를 포함한 비밀번호만 입력합니다. */
+/** 간편 회원가입: 학번, 이름과 8자 이상이며 특수문자를 포함한 비밀번호를 입력합니다. */
 export function Signup() {
   const navigate = useNavigate();
   const [studentId, setStudentId] = useState("");
+  const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
-  const [errors, setErrors] = useState({ studentId: false, password: false, passwordConfirm: false, passwordMismatch: false });
+  const [errors, setErrors] = useState({ studentId: false, name: false, password: false, passwordConfirm: false, passwordMismatch: false });
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     const nextErrors = {
       studentId: validators.studentId(studentId),
+      name: validators.name(name),
       password: validators.password(password),
       passwordConfirm: validators.passwordConfirm(passwordConfirm),
       passwordMismatch: password !== passwordConfirm,
@@ -33,7 +35,7 @@ export function Signup() {
     setIsLoading(true);
     setApiError(null);
     try {
-      await api.signup({ studentId, password });
+      await api.signup({ studentId, name: name.trim(), password });
       navigate("/login", { replace: true, state: { signupComplete: true } });
     } catch (error) {
       setApiError(error instanceof Error ? error.message : "회원가입 중 오류가 발생했습니다.");
@@ -69,6 +71,18 @@ export function Signup() {
                     className={cn(errors.studentId && "border-destructive focus-visible:ring-destructive")} autoComplete="username" required />
                 </div>
                 {errors.studentId && <p className="mt-1 text-sm text-destructive">{ERROR_MESSAGES.STUDENT_ID}</p>}
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="name">이름</FieldLabel>
+                <div className={inputWrap}>
+                  <UserRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input id="name" maxLength={50} placeholder="이름을 입력해주세요" value={name}
+                    onChange={(event) => { setName(event.target.value); setErrors((previous) => ({ ...previous, name: false })); }}
+                    onBlur={() => setErrors((previous) => ({ ...previous, name: validators.name(name) }))}
+                    className={cn(errors.name && "border-destructive focus-visible:ring-destructive")} autoComplete="name" required />
+                </div>
+                {errors.name && <p className="mt-1 text-sm text-destructive">{ERROR_MESSAGES.NAME}</p>}
               </Field>
 
               <Field>

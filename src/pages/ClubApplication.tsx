@@ -81,9 +81,7 @@ export function ClubApplication() {
         let submittedForm: ApplicationFormResponse | null = null;
         let initialApplicantInfo: ApplicantInfo = {
           studentId: user?.studentId ?? "",
-          // 간편가입은 별도 이름을 받지 않아 프로필 이름에 학번이 들어갈
-          // 수 있다. 지원서에서는 실제 이름을 직접 입력하도록 비워 둔다.
-          name: user?.name && user.name !== user.studentId ? user.name : "",
+          name: user?.name ?? "",
           department: user?.department === "미입력" ? "" : (user?.department ?? ""),
           phone: (user?.phone ?? "").replace(/\D/g, ""),
           grade: "",
@@ -123,8 +121,8 @@ export function ClubApplication() {
             };
           }
           initialApplicantInfo = {
-            studentId: application.applicant_student_id ?? initialApplicantInfo.studentId,
-            name: application.applicant_name ?? initialApplicantInfo.name,
+            studentId: mode === "edit" ? initialApplicantInfo.studentId : (application.applicant_student_id ?? initialApplicantInfo.studentId),
+            name: mode === "edit" ? initialApplicantInfo.name : (application.applicant_name ?? initialApplicantInfo.name),
             department: application.applicant_department ?? initialApplicantInfo.department,
             phone: (application.applicant_phone ?? initialApplicantInfo.phone).replace(/\D/g, ""),
             grade: application.applicant_grade ?? "",
@@ -296,8 +294,8 @@ export function ClubApplication() {
             <CardHeader><CardTitle className="flex items-center gap-3 text-lg"><div className="rounded-lg bg-primary/10 p-2"><FileText className="size-5 text-primary" /></div>기본 정보</CardTitle></CardHeader>
             <CardContent>
               <FieldGroup className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <ApplicantFieldInput label="학번" field="studentId" value={applicantInfo.studentId} error={applicantErrors.studentId} readOnly={isReadOnly} inputMode="numeric" maxLength={10} placeholder="학번 10자리" onChange={(value) => setApplicantField("studentId", value.replace(/\D/g, ""))} />
-                <ApplicantFieldInput label="이름" field="name" value={applicantInfo.name} error={applicantErrors.name} readOnly={isReadOnly} maxLength={50} placeholder="이름" onChange={(value) => setApplicantField("name", value)} />
+                <ApplicantFieldInput label="학번" field="studentId" value={applicantInfo.studentId} error={applicantErrors.studentId} readOnly inputMode="numeric" maxLength={10} placeholder="학번 10자리" onChange={(value) => setApplicantField("studentId", value.replace(/\D/g, ""))} />
+                <ApplicantFieldInput label="이름" field="name" value={applicantInfo.name} error={applicantErrors.name} readOnly maxLength={50} placeholder="이름" onChange={(value) => setApplicantField("name", value)} />
                 {isReadOnly ? (
                   <ApplicantFieldInput label="학과" field="department" value={applicantInfo.department} error={applicantErrors.department} readOnly maxLength={100} placeholder="학과" onChange={(value) => setApplicantField("department", value)} />
                 ) : (
