@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ import { ApiRequestError, isSessionExpiredError } from "@/lib/api";
  */
 export function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
 
   // 폼 필드 상태
@@ -119,6 +120,11 @@ export function Login() {
         <CardContent>
           <form onSubmit={handleSubmit}>
             <FieldGroup className="gap-3">
+              {location.state?.signupComplete && (
+                <p className="rounded-lg bg-primary/10 p-3 text-center text-sm text-primary">
+                  회원가입이 완료되었습니다. 로그인해주세요.
+                </p>
+              )}
               <Field>
                 <FieldLabel htmlFor="studentId">
                   학번

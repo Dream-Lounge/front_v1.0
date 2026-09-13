@@ -503,8 +503,13 @@ class ApiClient {
     return this.request<ClubResponse[]>(`/clubs${query}`, {}, false);
   }
 
-  getClub(clubId: string): Promise<ClubResponse> {
-    return this.request<ClubResponse>(`/clubs/${encodeURIComponent(clubId)}`, {}, false);
+  getClub(clubId: string, fresh = false): Promise<ClubResponse> {
+    const path = `/clubs/${encodeURIComponent(clubId)}`;
+    return this.request<ClubResponse>(
+      fresh ? `${path}?_fresh=${Date.now()}` : path,
+      fresh ? { cache: "no-store" } : {},
+      false,
+    );
   }
 
   getClubForm(clubId: string): Promise<ApplicationFormResponse> {
@@ -712,34 +717,6 @@ class ApiClient {
     );
   }
 
-  async submitMemberApplication(data: MemberApplicationRequest): Promise<ApplicationResponse> {
-    const form = await this.getClubForm(data.clubId);
-    const values = applicationValues(data.content);
-    const questions = [...form.questions].sort((a, b) => a.order_index - b.order_index);
-    const application = await this.request<ApiApplicationDetail>("/applications", {
-      method: "POST",
-      body: JSON.stringify({
-        form_id: form.id,
-        is_draft: false,
-        answers: questions.slice(0, values.length).map((question, index) => ({
-          question_id: question.id,
-          answer_text: values[index],
-        })),
-      }),
-    });
-    const user = JSON.parse(localStorage.getItem("user") ?? "null") as User | null;
-    return {
-      message: "지원서가 제출되었습니다.",
-      application_id: application.id,
-      applicant: {
-        student_id: user?.studentId ?? "",
-        name: user?.name ?? "",
-        department: user?.department ?? null,
-        phone: user?.phone ?? null,
-      },
-    };
-  }
-
   async checkApplicationStatus(clubId: string): Promise<boolean> {
     const applications = await this.request<ApiApplicationListItem[]>("/me/applications/submitted");
     return applications.some((application) => application.club_id === clubId);
@@ -768,25 +745,6 @@ class ApiClient {
       ? `/me/applications/drafts/${encodeURIComponent(id)}`
       : `/me/applications/submitted/${encodeURIComponent(id)}`;
     return this.request<ApiApplicationDetail>(endpoint);
-  }
-
-  async getApplication(id: string): Promise<ApplicationDetailResponse> {
-    const application = await this.getApplicationDetail(id);
-    const answers = application.answers.map((answer) => answer.answer_text ?? "");
-    const user = JSON.parse(localStorage.getItem("user") ?? "null") as User | null;
-    return {
-      id: application.id,
-      club_id: application.club_id ?? "",
-      club_name: application.club_name ?? "동아리",
-      student_id: user?.studentId ?? "",
-      status: mapApplicationStatus(application.status, application.is_draft),
-      content: {
-        motivation: answers[0] ?? "",
-        experience: answers[1] || undefined,
-        questions: answers[2] || undefined,
-      },
-      submitted_time: application.submitted_at ?? application.updated_at,
-    };
   }
 
   async updateApplication(id: string, content: ApplicationContent): Promise<{ message: string }> {

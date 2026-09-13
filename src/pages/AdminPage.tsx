@@ -23,6 +23,9 @@ import {
   Link2,
   Download,
   GripVertical,
+  Loader2,
+  BookOpen,
+  ExternalLink,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -125,9 +128,13 @@ interface ApplicationQuestion {
   options?: string[];
 }
 
-const APPLICATION_STATUSES = ["검토중", "합격", "불합격", "보류"] as const;
-type ApplicationStatusValue = (typeof APPLICATION_STATUSES)[number];
+type ApplicationStatusValue = "검토중" | "합격" | "불합격" | "보류";
+const REVIEW_DECISION_STATUSES = ["보류", "합격", "불합격"] as const satisfies readonly ApplicationStatusValue[];
 type ApplicantStatusFilter = "all" | "passed" | "failed" | "submitted" | "pending";
+
+function isFinalApplicationStatus(status: ApplicationStatusValue): boolean {
+  return status === "합격" || status === "불합격";
+}
 
 const APPLICANT_STATUS_FILTERS: { value: ApplicantStatusFilter; label: string }[] = [
   { value: "all", label: "전체" },
@@ -369,7 +376,9 @@ export function AdminPage() {
       try {
         // 동아리 정보 복원은 사용하지 않는 게시판 API의 성공 여부에
         // 의존하지 않아야 한다. 회장 정보는 먼저 독립적으로 불러온다.
-        const club = await api.getClub(selectedClubId);
+        // 공개 상세 조회는 짧게 캐시되므로 관리자 편집 화면에서는 항상
+        // DB에 저장된 최신 값을 불러온다.
+        const club = await api.getClub(selectedClubId, true);
         if (!active) return;
         setClubName(club.name);
         setClubCategory(club.division ?? "");
@@ -567,7 +576,7 @@ export function AdminPage() {
       suppressQuestionClickRef.current = true;
       setDraggingQuestionId(questionId);
       longPressTimerRef.current = null;
-    }, 300);
+    }, 100);
   };
 
   const handleQuestionPointerMove = (event: React.PointerEvent<HTMLLIElement>) => {
@@ -638,6 +647,7 @@ export function AdminPage() {
     applicant: SubmittedApplication;
     nextStatus: ApplicationStatusValue;
   } | null>(null);
+  const [isStatusSaving, setIsStatusSaving] = useState(false);
 
   const openStatusEdit = (
     applicant: SubmittedApplication,
@@ -647,6 +657,7 @@ export function AdminPage() {
   };
 
   const closeStatusEdit = () => {
+    if (isStatusSaving) return;
     setStatusEdit(null);
   };
 
@@ -658,13 +669,16 @@ export function AdminPage() {
       closeStatusEdit();
       return;
     }
+    setIsStatusSaving(true);
     try {
       await api.updateClubApplicationStatus(selectedClubId, applicant.id, apiStatus);
       setApplicants((prev) => prev.map((row) => row.id === applicant.id ? { ...row, status: nextStatus } : row));
-      closeStatusEdit();
+      setStatusEdit(null);
       toast.success("신청서 상태를 변경했습니다.");
     } catch (error) {
       toastApiError(error, "상태 변경에 실패했습니다.");
+    } finally {
+      setIsStatusSaving(false);
     }
   };
 
@@ -720,6 +734,7 @@ export function AdminPage() {
         await refreshManagedClubs();
       }
       setClubImageUrl(updatedClub.image_url ?? "");
+      setClubIsRecruiting(updatedClub.is_recruiting);
       const persistedContactLinks = updatedClub.contact_links?.length
         ? updatedClub.contact_links
         : normalizedContactLinks;
@@ -1218,7 +1233,7 @@ export function AdminPage() {
 
             {questions.length > 1 && (
               <p className="mt-3 text-xs text-slate-500">
-                문항 클릭 시 수정 가능하며, 이동 핸들을 0.3초간 누른 뒤 드래그하면 순서를 자유롭게 변경할 수 있습니다.
+                문항 클릭 시 수정 가능하며, 이동 핸들을 0.1초간 누른 뒤 드래그하면 순서를 자유롭게 변경할 수 있습니다.
               </p>
             )}
 
@@ -1326,6 +1341,7 @@ export function AdminPage() {
                         <div className="relative inline-flex">
                           <select
                             value={applicant.status}
+                            disabled={isFinalApplicationStatus(applicant.status)}
                             onChange={(e) =>
                               openStatusEdit(
                                 applicant,
@@ -1334,11 +1350,14 @@ export function AdminPage() {
                             }
                             aria-label={`${applicant.name} 상태 변경`}
                             className={cn(
-                              "h-7 cursor-pointer appearance-none rounded-full border-transparent pl-3 pr-7 text-xs font-bold outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+                              "h-7 cursor-pointer appearance-none rounded-full border-transparent pl-3 pr-7 text-xs font-bold outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:cursor-not-allowed",
                               STATUS_SELECT_CLASS[applicant.status],
                             )}
                           >
-                            {APPLICATION_STATUSES.map((status) => (
+                            {applicant.status === "검토중" && (
+                              <option value="검토중" disabled hidden>검토중</option>
+                            )}
+                            {REVIEW_DECISION_STATUSES.map((status) => (
                               <option key={status} value={status} className="bg-white text-slate-700">
                                 {status}
                               </option>
@@ -1349,7 +1368,6 @@ export function AdminPage() {
                             aria-hidden
                           />
                         </div>
-
                       </td>
                       <td className="px-4 text-center">
                         <button
@@ -1711,6 +1729,21 @@ export function AdminPage() {
                 </ul>
               </div>
             ))}
+            <div>
+              <p className="mb-2 px-2 text-xs font-semibold text-slate-400">
+                가이드
+              </p>
+              <a
+                href="https://luminous-pajama-e2a.notion.site/3d669a6cca3f801cbae4d592f1ef7260"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100"
+              >
+                <BookOpen className="size-4" aria-hidden />
+                <span>가이드 보기</span>
+                <ExternalLink className="ml-auto size-3.5 text-slate-400" aria-hidden />
+              </a>
+            </div>
           </nav>
         </aside>
 
@@ -2230,14 +2263,20 @@ export function AdminPage() {
                 </>
               )}
             </DialogDescription>
+            {statusEdit && isFinalApplicationStatus(statusEdit.nextStatus) && (
+              <p className="pt-1 text-xs text-muted-foreground">
+                합격/불합격은 저장 선택 시, 변경 불가 합니다.
+              </p>
+            )}
           </DialogHeader>
 
           <DialogFooter>
-            <Button type="button" variant="ghost" onClick={closeStatusEdit}>
+            <Button type="button" variant="ghost" onClick={closeStatusEdit} disabled={isStatusSaving}>
               취소
             </Button>
-            <Button type="button" onClick={confirmStatusChange}>
-              저장
+            <Button type="button" onClick={confirmStatusChange} disabled={isStatusSaving}>
+              {isStatusSaving && <Loader2 className="mr-1 size-4 animate-spin" />}
+              {isStatusSaving ? "저장 중..." : "저장"}
             </Button>
           </DialogFooter>
         </DialogContent>

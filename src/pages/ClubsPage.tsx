@@ -30,10 +30,17 @@ function toClubRow(club: ClubResponse): ClubRow {
   const division = CLUB_DIVISION_KEYS.includes(club.division as ClubDivision)
     ? club.division as ClubDivision
     : "학과";
-  const recruitmentLabel = club.recruit_end
-    ? `~${Number(club.recruit_end.slice(5, 7))}월 ${Number(club.recruit_end.slice(8, 10))}일`
-    : club.activity_period || "상시모집";
-  const today = new Date().toISOString().slice(0, 10);
+  const recruitmentLabel = !club.is_recruiting
+    ? "모집마감"
+    : club.recruit_end
+      ? `~${Number(club.recruit_end.slice(5, 7))}월 ${Number(club.recruit_end.slice(8, 10))}일`
+      : club.activity_period || "상시모집";
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 
   return {
     id: club.id,
@@ -94,8 +101,12 @@ export function ClubsPage() {
   const activeFilterLabel =
     CLUB_CATEGORY_FILTERS.find((f) => f.key === division)?.label ?? "전체";
 
-  const sectionTitle =
-    division === "all" ? "전체 동아리" : `${activeFilterLabel} 동아리`;
+  const searchQuery = searchParams.get("search")?.trim() ?? "";
+  const sectionTitle = searchQuery
+    ? `검색결과 : ${searchQuery}`
+    : division === "all"
+      ? "전체 동아리"
+      : `${activeFilterLabel} 동아리`;
 
   return (
     <div className="dream-directory mx-auto w-full max-w-7xl pb-16 sm:pb-20">

@@ -34,7 +34,7 @@ export function Signup() {
     setApiError(null);
     try {
       await api.signup({ studentId, password });
-      navigate("/login");
+      navigate("/login", { replace: true, state: { signupComplete: true } });
     } catch (error) {
       setApiError(error instanceof Error ? error.message : "회원가입 중 오류가 발생했습니다.");
     } finally {
