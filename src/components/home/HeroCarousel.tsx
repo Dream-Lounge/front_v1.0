@@ -4,8 +4,8 @@ import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 
 const SLIDES = [
-  { eyebrow: "동아리 가입부터 관리까지 한 번에!", title: "드림라운지", emphasis: "테스트 오픈", image: "/images/banner_test_open.png", alt: "드림라운지 테스트 오픈 2026.06.12~06.30" },
-  { eyebrow: "동아리에 대해 궁금한 모든 것들", title: "어떤 질문이든", emphasis: "답변해드려요!", image: "/images/banner_ai_chat.png", alt: "AI 챗봇 드림 컨시어지에서 필요한 정보를 물어보세요" },
+  { image: "/images/banner_test_open.png", alt: "드림라운지 테스트 오픈 2026.06.12~06.30" },
+  { image: "/images/banner_ai_chat.png", alt: "AI 챗봇 드림 컨시어지에서 필요한 정보를 물어보세요" },
 ];
 
 export function HeroCarousel() {
@@ -36,8 +36,6 @@ export function HeroCarousel() {
           {SLIDES.map((slide, index) => (
             <CarouselItem key={slide.image} className="pl-0" aria-hidden={index !== current}>
               <div className="dream-hero-slide">
-                <p className="dream-hero-eyebrow">{slide.eyebrow}</p>
-                <h1 className="dream-hero-title">{slide.title}<br /><span>{slide.emphasis}</span></h1>
                 <img className="dream-hero-banner" src={slide.image} alt={slide.alt} draggable={false} />
               </div>
             </CarouselItem>
