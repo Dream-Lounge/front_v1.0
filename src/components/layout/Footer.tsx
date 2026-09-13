@@ -42,7 +42,7 @@ const FOOTER_SECTIONS = [
  */
 export function Footer() {
     return (
-        <footer className="w-full flex justify-center bg-stone-900 text-stone-100">
+        <footer className="dream-footer w-full flex justify-center bg-stone-900 text-stone-100">
             <div className="w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-10 flex flex-col gap-8 items-start relative box-border">
                 {/** 상단 영역: 로고, 서비스 소개, 소셜 링크 및 사이트맵 */}
                 <div className="w-full flex flex-col lg:flex-row gap-8 lg:gap-13 items-start relative shrink-0">
