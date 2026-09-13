@@ -87,7 +87,7 @@ export function ClubsPage() {
     division === "all" ? "전체 동아리" : `${activeFilterLabel} 동아리`;
 
   return (
-    <div className="mx-auto w-full max-w-7xl pb-16 sm:pb-20">
+    <div className="dream-directory mx-auto w-full max-w-7xl pb-16 sm:pb-20">
       <div className="flex flex-col gap-6 rounded-2xl bg-muted/45 px-3 py-6 sm:gap-8 sm:px-6 sm:py-8">
         {/* 섹션 헤더 + 뷰 전환 */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
