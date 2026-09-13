@@ -353,9 +353,22 @@ export function AdminPage() {
   const [addSubmitted, setAddSubmitted] = useState(false);
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
   const [draggingQuestionId, setDraggingQuestionId] = useState<string | null>(null);
+  const [dragTargetIndex, setDragTargetIndex] = useState<number | null>(null);
+  const [dragOffsetY, setDragOffsetY] = useState(0);
+  const [isDragSettling, setIsDragSettling] = useState(false);
   const longPressTimerRef = useRef<number | null>(null);
   const pressStartPointRef = useRef<{ x: number; y: number } | null>(null);
+  const pressStartScrollYRef = useRef(0);
+  const pressPointerTypeRef = useRef<string>("");
   const draggingQuestionIdRef = useRef<string | null>(null);
+  const dragOriginIndexRef = useRef<number | null>(null);
+  const dragTargetIndexRef = useRef<number | null>(null);
+  const dragItemGapRef = useRef(16);
+  const dragLayoutRef = useRef(new Map<string, { top: number; height: number }>());
+  const dragPointerClientYRef = useRef<number | null>(null);
+  const autoScrollFrameRef = useRef<number | null>(null);
+  const canAutoScrollUpRef = useRef(false);
+  const canAutoScrollDownRef = useRef(false);
   const dragStartQuestionsRef = useRef<ApplicationQuestion[]>([]);
   const latestQuestionsRef = useRef<ApplicationQuestion[]>([]);
   const suppressQuestionClickRef = useRef(false);
@@ -559,6 +572,86 @@ export function AdminPage() {
     }
   };
 
+  const updateQuestionDragPosition = (clientY: number, pointerType = pressPointerTypeRef.current) => {
+    const start = pressStartPointRef.current;
+    const draggedId = draggingQuestionIdRef.current;
+    const draggedLayout = draggedId ? dragLayoutRef.current.get(draggedId) : undefined;
+    if (!start || !draggedLayout) return;
+
+    const rawPointerOffset = clientY - start.y + window.scrollY - pressStartScrollYRef.current;
+    const firstQuestion = questions[0];
+    const lastQuestion = questions.at(-1);
+    const firstLayout = firstQuestion ? dragLayoutRef.current.get(firstQuestion.id) : undefined;
+    const lastLayout = lastQuestion ? dragLayoutRef.current.get(lastQuestion.id) : undefined;
+    const minOffset = firstLayout ? firstLayout.top - draggedLayout.top : rawPointerOffset;
+    const maxOffset = lastLayout
+      ? lastLayout.top + lastLayout.height - draggedLayout.height - draggedLayout.top
+      : rawPointerOffset;
+    const pointerOffset = Math.min(maxOffset, Math.max(minOffset, rawPointerOffset));
+    canAutoScrollUpRef.current = rawPointerOffset > minOffset;
+    canAutoScrollDownRef.current = rawPointerOffset < maxOffset;
+    setDragOffsetY(pointerOffset);
+
+    const draggedCenter = draggedLayout.top + pointerOffset + draggedLayout.height / 2;
+    let nextTargetIndex = questions.length - 1;
+    const isAtFirstBoundary = firstLayout && pointerOffset <= minOffset + 2;
+    const isAtLastBoundary = lastLayout && pointerOffset >= maxOffset - 2;
+    if (isAtFirstBoundary) {
+      nextTargetIndex = 0;
+    } else if (isAtLastBoundary) {
+      nextTargetIndex = questions.length - 1;
+    } else {
+      for (let index = 0; index < questions.length; index += 1) {
+        const layout = dragLayoutRef.current.get(questions[index].id);
+        if (layout && draggedCenter <= layout.top + layout.height / 2) {
+          nextTargetIndex = index;
+          break;
+        }
+      }
+    }
+    if (nextTargetIndex !== dragTargetIndexRef.current) {
+      dragTargetIndexRef.current = nextTargetIndex;
+      setDragTargetIndex(nextTargetIndex);
+      if (pointerType === "touch" && "vibrate" in navigator) navigator.vibrate(8);
+    }
+  };
+
+  const stopQuestionAutoScroll = () => {
+    if (autoScrollFrameRef.current !== null) {
+      window.cancelAnimationFrame(autoScrollFrameRef.current);
+      autoScrollFrameRef.current = null;
+    }
+  };
+
+  const startQuestionAutoScroll = () => {
+    stopQuestionAutoScroll();
+    const tick = () => {
+      if (!draggingQuestionIdRef.current) {
+        autoScrollFrameRef.current = null;
+        return;
+      }
+      const clientY = dragPointerClientYRef.current;
+      if (clientY !== null) {
+        const edgeSize = Math.min(90, window.innerHeight * 0.14);
+        let scrollDistance = 0;
+        if (clientY < edgeSize && canAutoScrollUpRef.current) {
+          const intensity = Math.min(1, Math.max(0, (edgeSize - clientY) / edgeSize));
+          scrollDistance = -(0.35 + intensity * 1.45);
+        } else if (clientY > window.innerHeight - edgeSize && canAutoScrollDownRef.current) {
+          const intensity = Math.min(1, Math.max(0, (clientY - (window.innerHeight - edgeSize)) / edgeSize));
+          scrollDistance = 0.35 + intensity * 1.45;
+        }
+        if (scrollDistance !== 0) {
+          const previousScrollY = window.scrollY;
+          window.scrollBy({ top: scrollDistance, behavior: "auto" });
+          if (window.scrollY !== previousScrollY) updateQuestionDragPosition(clientY);
+        }
+      }
+      autoScrollFrameRef.current = window.requestAnimationFrame(tick);
+    };
+    autoScrollFrameRef.current = window.requestAnimationFrame(tick);
+  };
+
   const handleQuestionPointerDown = (event: React.PointerEvent<HTMLLIElement>, questionId: string) => {
     const target = event.target as HTMLElement;
     const isDragHandle = Boolean(target.closest("[data-drag-handle]"));
@@ -568,13 +661,39 @@ export function AdminPage() {
     clearQuestionLongPress();
     suppressQuestionClickRef.current = false;
     pressStartPointRef.current = { x: event.clientX, y: event.clientY };
+    dragPointerClientYRef.current = event.clientY;
+    pressStartScrollYRef.current = window.scrollY;
+    pressPointerTypeRef.current = event.pointerType;
     dragStartQuestionsRef.current = questions;
     latestQuestionsRef.current = questions;
+    const layout = new Map<string, { top: number; height: number }>();
+    const questionElements = Array.from(document.querySelectorAll<HTMLElement>("[data-question-id]"));
+    questionElements.forEach((element) => {
+      const id = element.dataset.questionId;
+      if (!id) return;
+      const rect = element.getBoundingClientRect();
+      layout.set(id, { top: rect.top + window.scrollY, height: rect.height });
+    });
+    dragLayoutRef.current = layout;
+    const originIndex = questions.findIndex((question) => question.id === questionId);
+    dragOriginIndexRef.current = originIndex;
+    dragTargetIndexRef.current = originIndex;
+    const currentLayout = layout.get(questionId);
+    const nextLayout = questions[originIndex + 1] ? layout.get(questions[originIndex + 1].id) : null;
+    if (currentLayout && nextLayout) {
+      dragItemGapRef.current = Math.max(0, nextLayout.top - currentLayout.top - currentLayout.height);
+    }
     event.currentTarget.setPointerCapture(event.pointerId);
     longPressTimerRef.current = window.setTimeout(() => {
       draggingQuestionIdRef.current = questionId;
       suppressQuestionClickRef.current = true;
       setDraggingQuestionId(questionId);
+      setDragTargetIndex(originIndex);
+      setDragOffsetY(0);
+      setIsDragSettling(false);
+      if (event.pointerType === "touch" && "vibrate" in navigator) navigator.vibrate(20);
+      updateQuestionDragPosition(event.clientY, event.pointerType);
+      startQuestionAutoScroll();
       longPressTimerRef.current = null;
     }, 100);
   };
@@ -582,36 +701,57 @@ export function AdminPage() {
   const handleQuestionPointerMove = (event: React.PointerEvent<HTMLLIElement>) => {
     const start = pressStartPointRef.current;
     if (!draggingQuestionIdRef.current) {
-      if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8) clearQuestionLongPress();
+      const movementLimit = pressPointerTypeRef.current === "touch" ? 14 : 8;
+      if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) > movementLimit) clearQuestionLongPress();
       return;
     }
     event.preventDefault();
-    const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>("[data-question-id]");
-    const targetId = target?.dataset.questionId;
-    const draggedId = draggingQuestionIdRef.current;
-    if (!targetId || targetId === draggedId) return;
-    setQuestions((prev) => {
-      const fromIndex = prev.findIndex((question) => question.id === draggedId);
-      const toIndex = prev.findIndex((question) => question.id === targetId);
-      if (fromIndex < 0 || toIndex < 0) return prev;
-      const next = [...prev];
-      const [moved] = next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, moved);
-      latestQuestionsRef.current = next;
-      return next;
-    });
+    dragPointerClientYRef.current = event.clientY;
+    updateQuestionDragPosition(event.clientY, event.pointerType);
   };
 
   const handleQuestionPointerEnd = async (event: React.PointerEvent<HTMLLIElement>) => {
     clearQuestionLongPress();
+    stopQuestionAutoScroll();
+    dragPointerClientYRef.current = null;
     pressStartPointRef.current = null;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-    if (!draggingQuestionIdRef.current) return;
+    const draggedId = draggingQuestionIdRef.current;
+    if (!draggedId) return;
     draggingQuestionIdRef.current = null;
+    const originIndex = dragOriginIndexRef.current;
+    const targetIndex = dragTargetIndexRef.current;
+    if (originIndex === null || targetIndex === null) {
+      setDraggingQuestionId(null);
+      return;
+    }
+
+    const draggedLayout = dragLayoutRef.current.get(draggedId);
+    const targetQuestion = questions[targetIndex];
+    const targetLayout = targetQuestion ? dragLayoutRef.current.get(targetQuestion.id) : undefined;
+    if (draggedLayout && targetLayout) {
+      const destinationTop = targetIndex > originIndex
+        ? targetLayout.top + targetLayout.height - draggedLayout.height
+        : targetLayout.top;
+      setIsDragSettling(true);
+      setDragOffsetY(destinationTop - draggedLayout.top);
+      await new Promise((resolve) => window.setTimeout(resolve, 180));
+    }
+
+    const nextQuestions = [...questions];
+    const [moved] = nextQuestions.splice(originIndex, 1);
+    nextQuestions.splice(targetIndex, 0, moved);
+    latestQuestionsRef.current = nextQuestions;
+    setQuestions(nextQuestions);
     setDraggingQuestionId(null);
+    setDragTargetIndex(null);
+    setDragOffsetY(0);
+    setIsDragSettling(false);
+    dragOriginIndexRef.current = null;
+    dragTargetIndexRef.current = null;
     if (!selectedClubId) return;
     try {
-      await api.reorderFormQuestions(selectedClubId, latestQuestionsRef.current.map((question) => question.id));
+      await api.reorderFormQuestions(selectedClubId, nextQuestions.map((question) => question.id));
       toast.success("문항 순서를 변경했습니다.");
     } catch (error) {
       setQuestions(dragStartQuestionsRef.current);
@@ -680,6 +820,18 @@ export function AdminPage() {
     } finally {
       setIsStatusSaving(false);
     }
+  };
+
+  const getQuestionDragOffset = (questionId: string, index: number) => {
+    if (!draggingQuestionId || dragTargetIndex === null) return 0;
+    if (questionId === draggingQuestionId) return dragOffsetY;
+    const originIndex = dragOriginIndexRef.current;
+    const draggedLayout = dragLayoutRef.current.get(draggingQuestionId);
+    if (originIndex === null || !draggedLayout) return 0;
+    const occupiedHeight = draggedLayout.height + dragItemGapRef.current;
+    if (dragTargetIndex > originIndex && index > originIndex && index <= dragTargetIndex) return -occupiedHeight;
+    if (dragTargetIndex < originIndex && index >= dragTargetIndex && index < originIndex) return occupiedHeight;
+    return 0;
   };
 
   const saveClub = async () => {
@@ -1175,12 +1327,23 @@ export function AdminPage() {
                     openEditQuestion(question);
                   }}
                   className={cn(
-                    "select-none rounded-xl border bg-white px-5 py-4 transition-all sm:cursor-grab sm:active:cursor-grabbing",
+                    "question-sort-item relative select-none rounded-xl border bg-white px-5 py-4 sm:cursor-grab sm:active:cursor-grabbing",
                     draggingQuestionId === question.id
-                      ? "z-10 border-primary opacity-70 shadow-md ring-2 ring-primary/20"
+                      ? cn(
+                          "question-sort-item--dragging z-20 border-primary bg-blue-50/90 shadow-xl ring-2 ring-primary/25",
+                          isDragSettling && "question-sort-item--settling",
+                        )
                       : "border-slate-200 hover:border-slate-300 hover:shadow-sm",
+                    draggingQuestionId && dragTargetIndex === index && index !== dragOriginIndexRef.current
+                      ? dragTargetIndex < (dragOriginIndexRef.current ?? 0)
+                        ? "question-drop-target-before"
+                        : "question-drop-target-after"
+                      : null,
                   )}
-                  style={{ touchAction: "pan-y" }}
+                  style={{
+                    touchAction: "pan-y",
+                    transform: `translate3d(0, ${getQuestionDragOffset(question.id, index)}px, 0) scale(${draggingQuestionId === question.id ? 1.018 : 1})`,
+                  }}
                 >
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0 flex items-center gap-3">
@@ -1192,7 +1355,10 @@ export function AdminPage() {
                           event.stopPropagation();
                           suppressQuestionClickRef.current = false;
                         }}
-                        className="inline-flex size-8 shrink-0 touch-none cursor-grab items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 active:cursor-grabbing"
+                        className={cn(
+                          "inline-flex size-9 shrink-0 touch-none cursor-grab items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 active:cursor-grabbing",
+                          draggingQuestionId === question.id && "bg-primary text-white hover:bg-primary hover:text-white",
+                        )}
                       >
                         <GripVertical className="size-5" />
                       </button>
@@ -1233,7 +1399,7 @@ export function AdminPage() {
 
             {questions.length > 1 && (
               <p className="mt-3 text-xs text-slate-500">
-                문항 클릭 시 수정 가능하며, 이동 핸들을 0.1초간 누른 뒤 드래그하면 순서를 자유롭게 변경할 수 있습니다.
+                문항 클릭 시 수정 가능하며, 이동 핸들을 0.1초간 누르면 문항을 잡을 수 있습니다. 원하는 위치로 옮긴 뒤 손을 놓아주세요.
               </p>
             )}
 
