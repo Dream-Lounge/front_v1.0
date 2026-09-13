@@ -56,8 +56,8 @@ export function Footer() {
 
                         {/** 서비스 설명: 플랫폼의 비전/슬로건 표시 */}
                         <div className="relative shrink-0 w-full h-10 font-kr text-sm text-stone-400">
-                            <p className="leading-5">드림라운지는 대학생들의 꿈과 열정을</p>
-                            <p className="leading-5">이어주는 동아리 플랫폼입니다.</p>
+                            <p className="leading-5">대학생들의 꿈과 열정을 이어주는</p>
+                            <p className="leading-5">동아리 신청·관리 웹 서비스</p>
                         </div>
 
                         {/** 소셜 미디어 링크: 외부 SNS 페이지로 연결 */}
