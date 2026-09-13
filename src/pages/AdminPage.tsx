@@ -373,6 +373,7 @@ export function AdminPage() {
   const mobileAutoScrollRemainderRef = useRef(0);
   const mobileAutoScrollLastFrameRef = useRef(0);
   const mobileAutoScrollDirectionRef = useRef(0);
+  const mobileAutoScrollPressureRef = useRef(0);
   const dragStartQuestionsRef = useRef<ApplicationQuestion[]>([]);
   const latestQuestionsRef = useRef<ApplicationQuestion[]>([]);
   const suppressQuestionClickRef = useRef(false);
@@ -591,9 +592,29 @@ export function AdminPage() {
     const maxOffset = lastLayout
       ? lastLayout.top + lastLayout.height - draggedLayout.height - draggedLayout.top
       : rawPointerOffset;
-    const pointerOffset = Math.min(maxOffset, Math.max(minOffset, rawPointerOffset));
-    canAutoScrollUpRef.current = rawPointerOffset > minOffset;
-    canAutoScrollDownRef.current = rawPointerOffset < maxOffset;
+    let pointerOffset = Math.min(maxOffset, Math.max(minOffset, rawPointerOffset));
+    if (pointerType === "touch") {
+      const viewportTop = window.visualViewport?.offsetTop ?? 0;
+      const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+      const safeTop = window.scrollY + viewportTop + Math.min(84, viewportHeight * 0.12);
+      const safeBottom = window.scrollY + viewportTop + viewportHeight - Math.min(28, viewportHeight * 0.05);
+      const viewportMinOffset = Math.min(0, safeTop - draggedLayout.top);
+      const viewportMaxOffset = Math.max(0, safeBottom - draggedLayout.height - draggedLayout.top);
+      pointerOffset = Math.min(maxOffset, viewportMaxOffset, Math.max(minOffset, viewportMinOffset, rawPointerOffset));
+
+      let pressure = 0;
+      if (rawPointerOffset < viewportMinOffset && pointerOffset > minOffset) {
+        pressure = -Math.min(1, (viewportMinOffset - rawPointerOffset) / 72);
+      } else if (rawPointerOffset > viewportMaxOffset && pointerOffset < maxOffset) {
+        pressure = Math.min(1, (rawPointerOffset - viewportMaxOffset) / 72);
+      }
+      mobileAutoScrollPressureRef.current = pressure;
+      canAutoScrollUpRef.current = pressure < 0;
+      canAutoScrollDownRef.current = pressure > 0;
+    } else {
+      canAutoScrollUpRef.current = rawPointerOffset > minOffset;
+      canAutoScrollDownRef.current = rawPointerOffset < maxOffset;
+    }
     dragOffsetYRef.current = pointerOffset;
     if (draggedQuestionElementRef.current) {
       draggedQuestionElementRef.current.style.transform = `translate3d(0, ${pointerOffset}px, 0) scale(1.018)`;
@@ -631,6 +652,7 @@ export function AdminPage() {
     mobileAutoScrollRemainderRef.current = 0;
     mobileAutoScrollLastFrameRef.current = 0;
     mobileAutoScrollDirectionRef.current = 0;
+    mobileAutoScrollPressureRef.current = 0;
   };
 
   const startQuestionAutoScroll = () => {
@@ -645,19 +667,9 @@ export function AdminPage() {
       if (clientY !== null) {
         let scrollDistance = 0;
         if (pressPointerTypeRef.current === "touch") {
-          const viewportTop = window.visualViewport?.offsetTop ?? 0;
-          const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
-          const viewportBottom = viewportTop + viewportHeight;
-          const edgeSize = Math.min(120, viewportHeight * 0.2);
-          let direction = 0;
-          let intensity = 0;
-          if (clientY < viewportTop + edgeSize && canAutoScrollUpRef.current) {
-            direction = -1;
-            intensity = Math.min(1, Math.max(0, (viewportTop + edgeSize - clientY) / edgeSize));
-          } else if (clientY > viewportBottom - edgeSize && canAutoScrollDownRef.current) {
-            direction = 1;
-            intensity = Math.min(1, Math.max(0, (clientY - (viewportBottom - edgeSize)) / edgeSize));
-          }
+          const pressure = mobileAutoScrollPressureRef.current;
+          const direction = pressure === 0 ? 0 : Math.sign(pressure);
+          const intensity = Math.abs(pressure);
 
           if (direction !== mobileAutoScrollDirectionRef.current) {
             mobileAutoScrollRemainderRef.current = 0;
@@ -1405,6 +1417,9 @@ export function AdminPage() {
                         type="button"
                         data-drag-handle
                         aria-label={`${question.title} 문항 순서 이동`}
+                        onTouchMove={(event) => {
+                          if (event.cancelable) event.preventDefault();
+                        }}
                         onClick={(event) => {
                           event.stopPropagation();
                           suppressQuestionClickRef.current = false;
