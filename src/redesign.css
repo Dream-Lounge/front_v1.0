@@ -1,0 +1,105 @@
+/* Bridge-inspired presentation; existing routes and data flow are retained. */
+:root {
+  --background: #fcfcfb; --foreground: #151719;
+  --card: #fff; --card-foreground: #151719;
+  --popover: #fff; --popover-foreground: #151719;
+  --primary: #0875e1; --primary-foreground: #fff;
+  --secondary: #edf4fc; --secondary-foreground: #155ba1;
+  --muted: #f1f2f3; --muted-foreground: #62676e;
+  --accent: #edf4fc; --accent-foreground: #155ba1;
+  --border: #e5e7e9; --input: #dfe2e6; --ring: #0875e1; --radius: 1rem;
+}
+body { margin: 0; -webkit-font-smoothing: antialiased; }
+::selection { background: #d6eaff; color: #084684; }
+h1,h2,h3 { text-wrap: balance; word-break: keep-all; }
+p { word-break: keep-all; overflow-wrap: anywhere; }
+button,a,input,textarea { -webkit-tap-highlight-color: transparent; }
+button:not(:disabled),a { touch-action: manipulation; }
+button:focus-visible,a:focus-visible { outline: 3px solid #0875e1; outline-offset: 4px; }
+button:disabled { cursor: not-allowed; }
+.dream-header { border-bottom: 1px solid #ededee; box-shadow: none; background: #fcfcfbf2; backdrop-filter: blur(18px); }
+.dream-header-inner { min-height: 88px; gap: 24px; }
+.dream-brand { height: 52px; }
+.dream-nav { justify-content: center; }
+.dream-nav a { font-size: .9375rem; font-weight: 600; border: 0; border-radius: 8px; }
+.dream-nav a[aria-current="page"] { color: var(--primary); background: var(--accent); }
+.dream-user { color: var(--primary); background: #edf4fc; border: 1px solid #dae9fa; width: 42px; height: 42px; }
+.dream-header input { height: 38px; background: #fff; border-radius: 10px; box-shadow: none; }
+.dream-main { padding-top: 48px; }
+.dream-home { gap: 60px; }
+.dream-hero { position: relative; padding: 6px 0 0; }
+.dream-hero-slide { min-height: 426px; display: flex; align-items: center; flex-direction: column; text-align: center; padding: 16px 20px 20px; }
+.dream-hero-eyebrow { border-radius: 99px; background: #edeeee; padding: 9px 19px; color: #585d64; font-size: .9375rem; font-weight: 500; margin-bottom: 22px; }
+.dream-hero-title { font-size: clamp(2.7rem, 5.5vw, 4.6rem); font-weight: 800; line-height: 1.16; letter-spacing: -.055em; margin: 0; }
+.dream-hero-title span { color: var(--primary); }
+.dream-hero-banner { width: min(620px, 100%); height: auto; aspect-ratio: 50 / 9; object-fit: cover; border-radius: 14px; margin-top: 26px; border: 1px solid #e6e8eb; }
+.dream-hero-controls { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 2px; color: #6d737b; font-size: .875rem; }
+.dream-hero-controls>span { display: flex; align-items: center; gap: 12px; }
+.dream-hero-controls strong { color: #1f2429; font-weight: 600; }
+.dream-control-divider { height: 1px; width: 24px; background: #c8cdd1; }
+.dream-hero-controls button { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; }
+.dream-hero-controls button:hover { background: #eaf2fc; color: #0875e1; }
+.dream-recruiting { grid-template-columns: minmax(0,1fr) 292px; gap: 36px; padding-top: 36px; border-top: 1px solid #e5e7e9; }
+.dream-recruiting h2 { font-size: 1.5rem; line-height: 1.4; letter-spacing: -.04em; font-weight: 700; }
+.dream-club-track { padding: 4px 2px 12px; gap: 16px; scroll-snap-type: x mandatory; }
+.dream-recruiting .dream-club-card { width: 216px; height: 276px; border-radius: 20px; scroll-snap-align: start; box-shadow: none; }
+.dream-club-card h3 { font-size: 1.125rem; line-height: 1.5; }
+.dream-club-card p { font-size: .875rem; }
+.dream-club-card [data-slot="card-content"] { padding: 18px; }
+.dream-divisions { width: 100%; border-top: 1px solid #e5e7e9; }
+.dream-divisions button { padding: 17px 4px; }
+.dream-divisions button>span:first-child { font-size: .9375rem; font-weight: 500; }
+.dream-divisions button>span:last-child { color: #69717a; }
+.dream-data-state { width: 100%; min-height: 240px; display: grid; place-content: center; text-align: center; padding: 28px; border: 1px dashed #dce0e4; border-radius: 20px; color: #62676e; font-size: 1rem; background: #f7f8f9; }
+.dream-data-state button { justify-self: center; margin-top: 16px; color: #0875e1; font-weight: 600; }
+.dream-directory>div { background: transparent; padding: 12px 0 0; gap: 30px; }
+.dream-directory h1>span:first-child { font-size: clamp(1.75rem, 3.8vw, 2.75rem); letter-spacing: -.05em; }
+.dream-directory [data-slot="card"] { border-radius: 22px; box-shadow: none; border-color: #e5e7e9; }
+.dream-main>div>div>header { padding: 24px 0 36px; border-bottom: 1px solid #e5e7e9; }
+.dream-main>div>div>header h1 { font-size: clamp(2rem, 4vw, 3.25rem); letter-spacing: -.05em; line-height: 1.3; }
+[data-slot="card"] { box-shadow: none; }
+[data-slot="button"] { min-height: 40px; font-weight: 600; }
+[data-slot="input"], [data-slot="textarea"] { font-size: 1rem; box-shadow: none; }
+.dream-auth { background: #f6f8fa; }
+.dream-auth [data-slot="card"] { padding: 32px 6px; border-radius: 26px; background: #fff; border: 1px solid #e3e6ea; }
+.dream-auth [data-slot="input"] { min-height: 46px; }
+.dream-footer { background: #f5f6f7; color: #1d2228; border-top: 1px solid #e3e5e8; }
+.dream-footer>div { padding-top: 48px; padding-bottom: 28px; }
+.dream-footer a.h-24 { height: 64px; }
+.dream-footer .text-white { color: #252a31; }
+.dream-footer .text-stone-400,.dream-footer .text-stone-600 { color: #626a74; }
+.dream-footer a:hover { color: #0875e1; }
+.dream-footer .bg-stone-400 { background: #e7eaee; }
+.dream-footer .border-stone-800 { border-color: #e0e4e8; }
+.dream-footer .h-10 { height: auto; }
+.dream-footer p { font-size: .875rem; }
+@media(min-width:1440px) { .dream-header-inner,.dream-main,.dream-footer>div { max-width: 1320px; } }
+@media(max-width:1023px) {
+ .dream-header-inner { gap: 12px; }
+ .dream-recruiting { grid-template-columns: minmax(0,1fr); }
+ .dream-divisions { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 28px; }
+ .dream-hero-slide { min-height: 400px; }
+}
+@media(max-width:639px) {
+ .dream-header-inner { display: grid; grid-template-columns: minmax(0,1fr) auto; padding-top: 10px; padding-bottom: 0; gap: 4px 12px; }
+ .dream-brand { height: 42px; grid-column: 1; grid-row: 1; justify-self: start; }
+ .dream-header-actions { grid-column: 2; grid-row: 1; }
+ .dream-nav { grid-column: 1 / -1; grid-row: 2; height: 48px; justify-content: space-between; gap: 0; }
+ .dream-nav a { font-size: .875rem; padding: 8px; }
+ .dream-main { padding-top: 26px; }
+ .dream-home { gap: 36px; }
+ .dream-hero-slide { min-height: 316px; padding: 10px 0 14px; }
+ .dream-hero-title { font-size: clamp(2.3rem,10.5vw,3.5rem); }
+ .dream-hero-eyebrow { font-size: .875rem; margin-bottom: 18px; padding: 8px 13px; }
+ .dream-hero-banner { margin-top: 24px; border-radius: 10px; }
+ .dream-recruiting { padding-top: 28px; gap: 36px; }
+ .dream-recruiting h2 { font-size: 1.35rem; }
+ .dream-recruiting .dream-club-card { width: 190px; height: 254px; }
+ .dream-divisions { column-gap: 18px; }
+ .dream-divisions button { flex-wrap: wrap; gap: 6px; }
+ .dream-divisions button>span:last-child { font-size: .875rem; }
+ .dream-footer>div { padding-top: 32px; }
+}
+@media(prefers-reduced-motion:reduce) {
+ *,*::before,*::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
