@@ -110,6 +110,16 @@
       box-shadow 120ms ease;
   }
 
+  @media (pointer: coarse) {
+    .question-sort-item--dragging:not(.question-sort-item--settling) {
+      transition:
+        transform 85ms cubic-bezier(0.2, 0.75, 0.25, 1),
+        border-color 120ms ease,
+        background-color 120ms ease,
+        box-shadow 120ms ease;
+    }
+  }
+
   .question-sort-item--settling {
     transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
   }
@@ -138,11 +148,9 @@
 
 @keyframes question-card-lift {
   from {
-    filter: saturate(0.9);
     box-shadow: 0 2px 8px rgb(15 23 42 / 8%);
   }
   to {
-    filter: saturate(1.08);
     box-shadow: 0 18px 36px rgb(15 23 42 / 18%);
   }
 }

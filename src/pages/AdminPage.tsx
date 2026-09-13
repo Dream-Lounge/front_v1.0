@@ -354,7 +354,6 @@ export function AdminPage() {
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
   const [draggingQuestionId, setDraggingQuestionId] = useState<string | null>(null);
   const [dragTargetIndex, setDragTargetIndex] = useState<number | null>(null);
-  const [dragOffsetY, setDragOffsetY] = useState(0);
   const [isDragSettling, setIsDragSettling] = useState(false);
   const longPressTimerRef = useRef<number | null>(null);
   const pressStartPointRef = useRef<{ x: number; y: number } | null>(null);
@@ -365,6 +364,8 @@ export function AdminPage() {
   const dragTargetIndexRef = useRef<number | null>(null);
   const dragItemGapRef = useRef(16);
   const dragLayoutRef = useRef(new Map<string, { top: number; height: number }>());
+  const dragOffsetYRef = useRef(0);
+  const draggedQuestionElementRef = useRef<HTMLLIElement | null>(null);
   const dragPointerClientYRef = useRef<number | null>(null);
   const autoScrollFrameRef = useRef<number | null>(null);
   const canAutoScrollUpRef = useRef(false);
@@ -590,7 +591,10 @@ export function AdminPage() {
     const pointerOffset = Math.min(maxOffset, Math.max(minOffset, rawPointerOffset));
     canAutoScrollUpRef.current = rawPointerOffset > minOffset;
     canAutoScrollDownRef.current = rawPointerOffset < maxOffset;
-    setDragOffsetY(pointerOffset);
+    dragOffsetYRef.current = pointerOffset;
+    if (draggedQuestionElementRef.current) {
+      draggedQuestionElementRef.current.style.transform = `translate3d(0, ${pointerOffset}px, 0) scale(1.018)`;
+    }
 
     const draggedCenter = draggedLayout.top + pointerOffset + draggedLayout.height / 2;
     let nextTargetIndex = questions.length - 1;
@@ -661,6 +665,7 @@ export function AdminPage() {
     clearQuestionLongPress();
     suppressQuestionClickRef.current = false;
     pressStartPointRef.current = { x: event.clientX, y: event.clientY };
+    draggedQuestionElementRef.current = event.currentTarget;
     dragPointerClientYRef.current = event.clientY;
     pressStartScrollYRef.current = window.scrollY;
     pressPointerTypeRef.current = event.pointerType;
@@ -689,7 +694,7 @@ export function AdminPage() {
       suppressQuestionClickRef.current = true;
       setDraggingQuestionId(questionId);
       setDragTargetIndex(originIndex);
-      setDragOffsetY(0);
+      dragOffsetYRef.current = 0;
       setIsDragSettling(false);
       if (event.pointerType === "touch" && "vibrate" in navigator) navigator.vibrate(20);
       updateQuestionDragPosition(event.clientY, event.pointerType);
@@ -717,12 +722,17 @@ export function AdminPage() {
     pressStartPointRef.current = null;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     const draggedId = draggingQuestionIdRef.current;
-    if (!draggedId) return;
+    if (!draggedId) {
+      draggedQuestionElementRef.current = null;
+      return;
+    }
     draggingQuestionIdRef.current = null;
     const originIndex = dragOriginIndexRef.current;
     const targetIndex = dragTargetIndexRef.current;
     if (originIndex === null || targetIndex === null) {
       setDraggingQuestionId(null);
+      dragOffsetYRef.current = 0;
+      draggedQuestionElementRef.current = null;
       return;
     }
 
@@ -733,8 +743,11 @@ export function AdminPage() {
       const destinationTop = targetIndex > originIndex
         ? targetLayout.top + targetLayout.height - draggedLayout.height
         : targetLayout.top;
+      dragOffsetYRef.current = destinationTop - draggedLayout.top;
+      if (draggedQuestionElementRef.current) {
+        draggedQuestionElementRef.current.style.transform = `translate3d(0, ${dragOffsetYRef.current}px, 0) scale(1.018)`;
+      }
       setIsDragSettling(true);
-      setDragOffsetY(destinationTop - draggedLayout.top);
       await new Promise((resolve) => window.setTimeout(resolve, 180));
     }
 
@@ -745,7 +758,8 @@ export function AdminPage() {
     setQuestions(nextQuestions);
     setDraggingQuestionId(null);
     setDragTargetIndex(null);
-    setDragOffsetY(0);
+    dragOffsetYRef.current = 0;
+    draggedQuestionElementRef.current = null;
     setIsDragSettling(false);
     dragOriginIndexRef.current = null;
     dragTargetIndexRef.current = null;
@@ -824,7 +838,7 @@ export function AdminPage() {
 
   const getQuestionDragOffset = (questionId: string, index: number) => {
     if (!draggingQuestionId || dragTargetIndex === null) return 0;
-    if (questionId === draggingQuestionId) return dragOffsetY;
+    if (questionId === draggingQuestionId) return dragOffsetYRef.current;
     const originIndex = dragOriginIndexRef.current;
     const draggedLayout = dragLayoutRef.current.get(draggingQuestionId);
     if (originIndex === null || !draggedLayout) return 0;
