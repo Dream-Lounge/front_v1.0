@@ -4,8 +4,8 @@ import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 
 const SLIDES = [
-  { image: "/images/banner_test_open.png", alt: "드림라운지 테스트 오픈 2026.06.12~06.30" },
-  { image: "/images/banner_ai_chat.png", alt: "AI 챗봇 드림 컨시어지에서 필요한 정보를 물어보세요" },
+  { image: "/images/banner_test_open.png", alt: "동아리 가입부터 관리까지 한번에! 드림라운지 테스트 오픈 - 9월 15일부터 10월 10일 오후 11시 59분까지" },
+  { image: "/images/banner_survey.png", alt: "서비스 만족도 설문조사 - 기간 2026.9.15~10.18, 추첨을 통해 소정의 상품을 드립니다" },
 ];
 
 export function HeroCarousel() {
