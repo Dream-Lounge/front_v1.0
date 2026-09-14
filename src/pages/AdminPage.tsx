@@ -1256,6 +1256,7 @@ export function AdminPage() {
               <Textarea
                 value={clubTagline}
                 onChange={(e) => setClubTagline(e.target.value)}
+                maxLength={2000}
                 placeholder="동아리를 소개하는 글을 입력해주세요."
                 className="mt-3 min-h-[120px] resize-y bg-white"
               />
