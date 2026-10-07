@@ -85,7 +85,6 @@ button:disabled { cursor: not-allowed; }
 .dream-data-state { width: 100%; min-height: 240px; display: grid; place-content: center; text-align: center; padding: 28px; border: 1px dashed #dce0e4; border-radius: 20px; color: #62676e; font-size: 1rem; background: #f7f8f9; }
 .dream-data-state button { justify-self: center; margin-top: 16px; color: #0875e1; font-weight: 600; }
 .dream-directory>div { background: transparent; padding: 12px 0 0; gap: 30px; }
-.dream-directory h1>span:first-child { font-size: clamp(1.75rem, 3.8vw, 2.75rem); letter-spacing: -.05em; }
 .dream-directory [data-slot="card"] { border-radius: 22px; box-shadow: none; border-color: #e5e7e9; }
 .dream-main>div>div>header { padding: 24px 0 36px; border-bottom: 1px solid #e5e7e9; }
 .dream-main>div>div>header h1 { font-size: clamp(2rem, 4vw, 3.25rem); letter-spacing: -.05em; line-height: 1.3; }

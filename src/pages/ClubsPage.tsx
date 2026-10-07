@@ -100,14 +100,13 @@ export function ClubsPage() {
       <div className="flex flex-col gap-6 rounded-2xl bg-muted/45 px-3 py-6 sm:gap-8 sm:px-6 sm:py-8">
         {/* 섹션 헤더 + 뷰 전환 */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <h1 className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <span className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-              {sectionTitle}
+          {/* 관리자 '신청서 관리' 제목과 같은 구성: 제목 + 총 개수 알약 */}
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-bold text-foreground">{sectionTitle}</h1>
+            <span className="rounded-full bg-[#EEF4FF] px-3 py-1 text-lg font-extrabold tabular-nums text-[#1F4F95]">
+              {filtered.length}개
             </span>
-            <span className="text-base font-semibold tabular-nums text-primary sm:text-lg">
-              {filtered.length}
-            </span>
-          </h1>
+          </div>
 
           <div
             className="inline-flex self-start rounded-xl bg-muted/80 p-1 sm:self-auto"

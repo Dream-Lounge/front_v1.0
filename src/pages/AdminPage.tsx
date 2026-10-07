@@ -1217,7 +1217,7 @@ export function AdminPage() {
                 신청서 관리
               </h2>
               <span className="rounded-full bg-[#EEF4FF] px-3 py-1 text-lg font-extrabold text-[#1F4F95]">
-                총 {applicantTotal}명
+                {applicantTotal}명
               </span>
             </div>
 
