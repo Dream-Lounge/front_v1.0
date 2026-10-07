@@ -60,9 +60,9 @@ export function Header() {
 
                 {/** 검색 + 사용자 (높이 h-9로 네비와 맞춤) */}
                 <div className="dream-header-actions shrink-0 flex items-center gap-2 sm:gap-3 h-9">
-                    {/** 검색 바 (sm 이상) */}
+                    {/** 검색 바 (모바일에서는 로고와 사용자 버튼 사이 남는 폭을 채움) */}
                     <form
-                        className="hidden sm:block w-[min(100%,14rem)] md:w-56 lg:max-w-sm"
+                        className="dream-header-search block w-[min(100%,14rem)] md:w-56 lg:max-w-sm"
                         onSubmit={handleSearch}
                     >
                         <div className="relative h-9">

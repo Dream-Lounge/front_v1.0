@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { LayoutGrid, List } from "lucide-react";
+import { Check, LayoutGrid, List } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { formatRecruitmentLabel } from "@/lib/date";
 import { mapClubResponse, type ClubData } from "@/data/clubs";
+import { useHorizontalScroll } from "@/hooks/useHorizontalScroll";
+import { ScrollArrowButton } from "@/components/common/ScrollArrowButton";
 import {
   CLUB_CATEGORY_FILTERS,
   CLUB_DIVISION_KEYS,
@@ -58,6 +60,8 @@ export function ClubsPage() {
   const [searchParams] = useSearchParams();
   const [division, setDivision] = useState<"all" | ClubDivision>("all");
   const [view, setView] = useState<ViewMode>("card");
+  const [recruitingOnly, setRecruitingOnly] = useState(false);
+  const categoryScroll = useHorizontalScroll<HTMLDivElement>();
   const [allRows, setAllRows] = useState<ClubRow[]>([]);
 
   useEffect(() => {
@@ -75,10 +79,15 @@ export function ClubsPage() {
     };
   }, [searchParams]);
 
-  const filtered = useMemo(() => {
-    if (division === "all") return allRows;
-    return allRows.filter((row) => row.division === division);
-  }, [allRows, division]);
+  const filtered = useMemo(
+    () =>
+      allRows.filter(
+        (row) =>
+          (division === "all" || row.division === division) &&
+          (!recruitingOnly || row.recruitment.status === "모집중"),
+      ),
+    [allRows, division, recruitingOnly],
+  );
 
   const activeFilterLabel =
     CLUB_CATEGORY_FILTERS.find((f) => f.key === division)?.label ?? "전체";
@@ -134,42 +143,95 @@ export function ClubsPage() {
           </div>
         </div>
 
-        {/* 분과 필터 바 */}
-        <div className="flex gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {CLUB_CATEGORY_FILTERS.map(
-            ({ key, label, icon: Icon, inactiveIconClass }) => {
-              const isActive = division === key;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setDivision(key)}
-                  className={cn(
-                    "inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-semibold transition-colors",
-                    isActive
-                      ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                      : "border-border bg-card text-foreground shadow-xs hover:bg-muted/60",
-                  )}
-                >
-                  <Icon
-                    className={cn(
-                      "h-4 w-4 shrink-0",
-                      isActive
-                        ? "text-primary-foreground"
-                        : inactiveIconClass,
-                    )}
-                    aria-hidden
-                  />
-                  {label}
-                </button>
-              );
-            },
-          )}
+        {/* 분과 필터 바 + 모집중 필터 (데스크톱은 우측 끝에 붙여 보기 방식 토글과 정렬, 모바일은 아래 줄) */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
+          {/* 잘린 분과가 있는 쪽에만 흐림 효과와 이동 버튼을 띄운다. */}
+          <div className="relative min-w-0">
+            <div
+              ref={categoryScroll.ref}
+              className="flex gap-2 overflow-x-auto scroll-px-12 pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              {CLUB_CATEGORY_FILTERS.map(
+                ({ key, label, icon: Icon, inactiveIconClass }) => {
+                  const isActive = division === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={(event) => {
+                        setDivision(key);
+                        // 가장자리에 반쯤 걸친 분과를 누르면 전부 보이도록 끌어온다.
+                        event.currentTarget.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+                      }}
+                      className={cn(
+                        "inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-semibold transition-colors",
+                        isActive
+                          ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                          : "border-border bg-card text-foreground shadow-xs hover:bg-muted/60",
+                      )}
+                    >
+                      <Icon
+                        className={cn(
+                          "h-4 w-4 shrink-0",
+                          isActive
+                            ? "text-primary-foreground"
+                            : inactiveIconClass,
+                        )}
+                        aria-hidden
+                      />
+                      {label}
+                    </button>
+                  );
+                },
+              )}
+            </div>
+            {categoryScroll.canScrollPrev && (
+              <>
+                <div className="pointer-events-none absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-background via-background/80 to-transparent" aria-hidden />
+                <ScrollArrowButton
+                  direction="prev"
+                  onClick={() => categoryScroll.scroll("prev")}
+                  label="이전 분과 보기"
+                  className="absolute left-0 top-[calc(50%-1px)] -translate-y-1/2"
+                />
+              </>
+            )}
+            {categoryScroll.canScrollNext && (
+              <>
+                <div className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-background via-background/80 to-transparent" aria-hidden />
+                <ScrollArrowButton
+                  direction="next"
+                  onClick={() => categoryScroll.scroll("next")}
+                  label="다음 분과 보기"
+                  className="absolute right-0 top-[calc(50%-1px)] -translate-y-1/2"
+                />
+              </>
+            )}
+          </div>
+          {/* 분과(하나만 선택)와 달리 켜고 끄는 필터라, 채운 색 대신 연한 강조 + 체크 아이콘으로 구분한다. */}
+          <div className="shrink-0 self-start sm:ml-auto sm:self-auto">
+            <button
+              type="button"
+              aria-pressed={recruitingOnly}
+              onClick={() => setRecruitingOnly((prev) => !prev)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full border px-4 py-2.5 text-sm font-semibold transition-colors",
+                recruitingOnly
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-dashed border-border bg-card text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+              )}
+            >
+              {recruitingOnly && <Check className="h-4 w-4 shrink-0" aria-hidden />}
+              모집중만 보기
+            </button>
+          </div>
         </div>
 
         {filtered.length === 0 ? (
           <p className="py-16 text-center text-sm text-muted-foreground">
-            아직 {activeFilterLabel} 분과에 등록된 동아리가 없습니다.
+            {recruitingOnly
+              ? `현재 모집 중인 ${division === "all" ? "" : `${activeFilterLabel} 분과 `}동아리가 없습니다.`
+              : `아직 ${activeFilterLabel} 분과에 등록된 동아리가 없습니다.`}
           </p>
         ) : view === "card" ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">

@@ -38,8 +38,8 @@ interface StatItemProps {
 
 function StatItem({ title, value, valueClass }: StatItemProps) {
   return (
-    <div className="flex min-w-[92px] flex-1 flex-col items-center gap-1.5 px-3 py-4">
-      <span className="text-sm font-medium text-muted-foreground">{title}</span>
+    <div className="flex min-w-0 flex-col items-center gap-1.5 px-1 py-4 sm:px-3">
+      <span className="whitespace-nowrap text-sm font-medium text-muted-foreground">{title}</span>
       <span className={`text-xl font-extrabold leading-none ${valueClass ?? "text-foreground"}`}>
         {value}
       </span>
@@ -200,7 +200,8 @@ export function ApplicationStatus() {
   return (
     <div className="max-w-6xl mx-auto flex flex-col gap-8">
       <h2 className="text-xl sm:text-2xl font-bold text-foreground">지원 내역</h2>
-      <div className="flex divide-x divide-border overflow-x-auto rounded-2xl border bg-card shadow-sm [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {/* 다섯 칸이 화면 폭을 똑같이 나눠 가져, 좁은 화면에서도 가려지는 항목이 없다. */}
+      <div className="grid grid-cols-5 divide-x divide-border rounded-2xl border bg-card shadow-sm">
         <StatItem title="전체" value={stats.total} />
         <StatItem title="합격" value={stats.accepted} valueClass="text-primary" />
         <StatItem
