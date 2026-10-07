@@ -62,8 +62,19 @@ button:disabled { cursor: not-allowed; }
 .dream-hero-controls button:hover { background: #eaf2fc; color: #0875e1; }
 .dream-recruiting { grid-template-columns: minmax(0,1fr) 292px; gap: 36px; padding-top: 36px; border-top: 1px solid #e5e7e9; }
 .dream-recruiting h2 { font-size: 1.5rem; line-height: 1.4; letter-spacing: -.04em; font-weight: 700; }
-.dream-club-track { padding: 4px 2px 12px; gap: 16px; scroll-snap-type: x mandatory; }
+/* 위아래 여백을 같게 두어야 카드 하단이 우측 분과 목록과 정확히 맞는다. */
+.dream-club-track { padding: 4px 2px; gap: 16px; scroll-snap-type: x mandatory; }
+/* 카드 높이를 고정하면 우측 분과 목록보다 짧아져 아래에 빈 공간이 생긴다.
+   데스크톱에서는 컬럼 높이를 채우고 3:4 비율로 폭이 정해지도록 둔다. */
 .dream-recruiting .dream-club-card { width: 216px; height: 276px; border-radius: 20px; scroll-snap-align: start; box-shadow: none; }
+@media(min-width:1024px) {
+ .dream-recruiting .dream-club-card { width: auto; height: 100%; aspect-ratio: 3 / 4; }
+}
+/* 포스터 이미지 위에 얹히는 분과 뱃지 — 기본 뱃지(12px)로는 작아서 키운다. */
+.dream-club-card [data-slot="badge"] { font-size: .8125rem; padding: 4px 11px; }
+@media(min-width:1024px) {
+ .dream-club-card [data-slot="badge"] { font-size: .875rem; padding: 5px 13px; }
+}
 .dream-club-card h3 { font-size: 1.125rem; line-height: 1.5; }
 .dream-club-card p { font-size: .875rem; }
 .dream-club-card [data-slot="card-content"] { padding: 18px; }

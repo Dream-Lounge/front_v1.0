@@ -17,6 +17,8 @@ import {
   X,
   SquarePen,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Eye,
   Info,
   Mail,
@@ -304,6 +306,14 @@ export function AdminPage() {
   const [selectedApplication, setSelectedApplication] = useState<AdminApplicationDetail | null>(null);
   const [reviewComment, setReviewComment] = useState("");
 
+  /**
+   * 신청서 표는 최소 폭이 760px이라 좁은 화면에서는 뒤쪽 열(상태·상세보기)이
+   * 가려진다. 가려진 열이 있을 때만 좌우 이동 버튼을 띄운다.
+   */
+  const applicantsScrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollApplicantsPrev, setCanScrollApplicantsPrev] = useState(false);
+  const [canScrollApplicantsNext, setCanScrollApplicantsNext] = useState(false);
+
   /** 신청서 엑셀 다운로드 — 항목 선택 다이얼로그 */
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [exportColumns, setExportColumns] = useState<Record<ExportColumnKey, boolean>>({
@@ -443,6 +453,31 @@ export function AdminPage() {
 
   const safeApplicantPage = Math.min(applicantPage, applicantTotalPages);
   const pagedApplicants = applicants;
+
+  useEffect(() => {
+    const element = applicantsScrollRef.current;
+    if (!element) return;
+    const update = () => {
+      setCanScrollApplicantsPrev(element.scrollLeft > 4);
+      setCanScrollApplicantsNext(
+        element.scrollLeft + element.clientWidth < element.scrollWidth - 4,
+      );
+    };
+    update();
+    element.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      element.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, [activeTab, pagedApplicants]);
+
+  const scrollApplicants = (direction: "prev" | "next") => {
+    const element = applicantsScrollRef.current;
+    if (!element) return;
+    const amount = Math.max(element.clientWidth * 0.8, 200);
+    element.scrollBy({ left: direction === "prev" ? -amount : amount, behavior: "smooth" });
+  };
   const applicantPageNumbers = useMemo(() => {
     const visibleCount = Math.min(applicantTotalPages, 5);
     const start = Math.max(
@@ -1239,8 +1274,29 @@ export function AdminPage() {
             </div>
           </div>
 
-          <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200">
-            <div className="overflow-x-auto">
+          <div className="relative mt-6 overflow-hidden rounded-2xl border border-slate-200">
+            {/* 표가 가려질 때만 나타나는 좌우 이동 버튼. 행을 가리지 않도록 헤더 줄 높이에 맞춰 띄운다. */}
+            {canScrollApplicantsPrev && (
+              <button
+                type="button"
+                onClick={() => scrollApplicants("prev")}
+                aria-label="이전 항목 보기"
+                className="absolute left-2 top-6 z-10 flex size-9 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white/95 shadow-md backdrop-blur-sm transition-colors hover:bg-slate-50"
+              >
+                <ChevronLeft className="size-4 text-slate-600" />
+              </button>
+            )}
+            {canScrollApplicantsNext && (
+              <button
+                type="button"
+                onClick={() => scrollApplicants("next")}
+                aria-label="다음 항목 보기"
+                className="absolute right-2 top-6 z-10 flex size-9 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white/95 shadow-md backdrop-blur-sm transition-colors hover:bg-slate-50"
+              >
+                <ChevronRight className="size-4 text-slate-600" />
+              </button>
+            )}
+            <div ref={applicantsScrollRef} className="overflow-x-auto">
               <table className="min-w-[760px] w-full table-fixed">
               <thead className="bg-[#F8FAFD]">
                 <tr className="h-12 text-left text-sm font-semibold text-slate-500">
