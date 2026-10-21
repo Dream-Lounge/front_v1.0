@@ -1,4 +1,5 @@
 export const API_BASE_URL = import.meta.env.VITE_API_URL;
+const API_TIMEOUT_MS = 30_000;
 
 if (!API_BASE_URL) {
   throw new Error("VITE_API_URL is not defined. Please set it in your environment variables.");
@@ -91,6 +92,34 @@ export interface ClubResponse {
   is_recruiting: boolean;
   member_count: number;
   tags: Array<{ tag_key: string; tag_value: string }>;
+}
+
+export interface RecommendationResult {
+  club_id: string;
+  name: string;
+  score: number;
+  matched_constraints: string[];
+  evidence: string[];
+  is_recruiting: boolean;
+  confidence: "high" | "medium" | "low";
+  reason: string;
+}
+
+export interface RecommendationResponse {
+  query: string;
+  results: RecommendationResult[];
+  model_info: { model: string; backend: string };
+}
+
+export interface RecommendationQAResponse {
+  supported: boolean;
+  answer: string;
+  club_id: string | null;
+  evidence: string[];
+  model_info: { model: string; backend: string };
+  intent: string;
+  confidence: number;
+  suggested_questions: string[];
 }
 
 export type ClubContactLinkType = "email" | "phone" | "url";
@@ -421,11 +450,29 @@ class ApiClient {
     };
     if (!(options.body instanceof FormData)) headers["Content-Type"] = "application/json";
 
-    let response = await fetch(url, { ...options, headers, credentials: "include" });
+    const fetchWithTimeout = async () => {
+      const controller = new AbortController();
+      const abort = () => controller.abort();
+      options.signal?.addEventListener("abort", abort, { once: true });
+      const timeoutId = window.setTimeout(abort, API_TIMEOUT_MS);
+      try {
+        return await fetch(url, { ...options, headers, credentials: "include", signal: controller.signal });
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          throw new ApiRequestError("서버 응답 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.", 408);
+        }
+        throw error;
+      } finally {
+        window.clearTimeout(timeoutId);
+        options.signal?.removeEventListener("abort", abort);
+      }
+    };
+
+    let response = await fetchWithTimeout();
     if (requiresAuth && response.status === 401) {
       const refreshed = await this.refreshAccessToken();
       if (!refreshed) this.expireSession();
-      response = await fetch(url, { ...options, headers, credentials: "include" });
+      response = await fetchWithTimeout();
     }
 
     if (!response.ok) {
@@ -503,6 +550,36 @@ class ApiClient {
       ? `?search=${encodeURIComponent(search.trim())}`
       : "";
     return this.request<ClubResponse[]>(`/clubs${query}`, {}, false);
+  }
+
+  recommendClubs(query: string, topK = 5): Promise<RecommendationResponse> {
+    return this.request<RecommendationResponse>(
+      "/recommendations",
+      {
+        method: "POST",
+        body: JSON.stringify({ query, top_k: topK }),
+      },
+      false,
+    );
+  }
+
+  askClubQuestion(
+    question: string,
+    clubId: string,
+    previousQuestion?: string,
+  ): Promise<RecommendationQAResponse> {
+    return this.request<RecommendationQAResponse>(
+      "/recommendations/qa",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          question,
+          club_id: clubId,
+          previous_question: previousQuestion,
+        }),
+      },
+      false,
+    );
   }
 
   getClub(clubId: string, fresh = false): Promise<ClubResponse> {
