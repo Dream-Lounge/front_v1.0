@@ -1,12 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Plus, Sparkles } from "lucide-react";
+import { ChevronRight, Plus, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatEndDateLabel } from "@/lib/date";
 import { FEATURES } from "@/config/features";
 import { api } from "@/lib/api";
+import { useHorizontalScroll } from "@/hooks/useHorizontalScroll";
+import { ScrollArrowButton } from "@/components/common/ScrollArrowButton";
 
 interface RecruitingClub {
   id: string;
@@ -26,7 +28,7 @@ interface RecruitingClub {
  */
 export function RecruitingSection() {
   const navigate = useNavigate();
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const clubScroll = useHorizontalScroll<HTMLDivElement>();
 
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -70,36 +72,6 @@ export function RecruitingSection() {
     };
   }, [attempt]);
 
-  const [canScrollPrev, setCanScrollPrev] = useState(false);
-  const [canScrollNext, setCanScrollNext] = useState(false);
-
-  const updateScrollState = () => {
-    const el = scrollRef.current;
-    if (!el) return;
-    setCanScrollPrev(el.scrollLeft > 4);
-    setCanScrollNext(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
-  };
-
-  useEffect(() => {
-    updateScrollState();
-    const el = scrollRef.current;
-    if (!el) return;
-    el.addEventListener("scroll", updateScrollState, { passive: true });
-    window.addEventListener("resize", updateScrollState);
-    return () => {
-      el.removeEventListener("scroll", updateScrollState);
-      window.removeEventListener("resize", updateScrollState);
-    };
-  }, [recruitingClubs]);
-
-  const scrollPrev = () => {
-    scrollRef.current?.scrollBy({ left: -360, behavior: "smooth" });
-  };
-
-  const scrollNext = () => {
-    scrollRef.current?.scrollBy({ left: 360, behavior: "smooth" });
-  };
-
   return (
     <div className="dream-recruiting grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-12">
       {/* 좌측 컬럼: 모집중인 동아리 (타이틀 + 가로 스크롤 카드) */}
@@ -122,7 +94,7 @@ export function RecruitingSection() {
         {/* 가로 스크롤 동아리 카드 */}
         <div className="relative min-w-0 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
           <div
-            ref={scrollRef}
+            ref={clubScroll.ref}
             className="dream-club-track flex items-stretch gap-3 overflow-x-auto scroll-smooth lg:h-full [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {loading || failed || recruitingClubs.length === 0 ? (
@@ -177,28 +149,21 @@ export function RecruitingSection() {
             ))}
           </div>
 
-          {/* 이전 버튼 */}
-          {canScrollPrev && (
-            <button
-              type="button"
-              onClick={scrollPrev}
-              aria-label="이전 동아리"
-              className="absolute left-0 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white shadow-md transition-colors hover:bg-gray-50"
-            >
-              <ChevronLeft className="size-5 text-gray-600" />
-            </button>
+          {clubScroll.canScrollPrev && (
+            <ScrollArrowButton
+              direction="prev"
+              onClick={() => clubScroll.scroll("prev", 360)}
+              label="이전 동아리"
+              className="absolute left-0 top-1/2 size-10 -translate-y-1/2"
+            />
           )}
-
-          {/* 다음 버튼 */}
-          {canScrollNext && (
-            <button
-              type="button"
-              onClick={scrollNext}
-              aria-label="다음 동아리"
-              className="absolute right-0 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white shadow-md transition-colors hover:bg-gray-50"
-            >
-              <ChevronRight className="size-5 text-gray-600" />
-            </button>
+          {clubScroll.canScrollNext && (
+            <ScrollArrowButton
+              direction="next"
+              onClick={() => clubScroll.scroll("next", 360)}
+              label="다음 동아리"
+              className="absolute right-0 top-1/2 size-10 -translate-y-1/2"
+            />
           )}
         </div>
       </div>

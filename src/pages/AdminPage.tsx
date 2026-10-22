@@ -44,6 +44,8 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { useHorizontalScroll } from "@/hooks/useHorizontalScroll";
+import { ScrollArrowButton } from "@/components/common/ScrollArrowButton";
 import {
   api,
   ApiRequestError,
@@ -322,6 +324,12 @@ export function AdminPage() {
   const [selectedApplication, setSelectedApplication] = useState<AdminApplicationDetail | null>(null);
   const [reviewComment, setReviewComment] = useState("");
 
+  /**
+   * 신청서 표는 최소 폭이 760px이라 좁은 화면에서는 뒤쪽 열(상태·상세보기)이
+   * 가려진다. 가려진 열이 있을 때만 좌우 이동 버튼을 띄운다.
+   */
+  const applicantsScroll = useHorizontalScroll<HTMLDivElement>();
+
   /** 신청서 엑셀 다운로드 — 항목 선택 다이얼로그 */
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [exportColumns, setExportColumns] = useState<Record<ExportColumnKey, boolean>>({
@@ -490,6 +498,7 @@ export function AdminPage() {
 
   const safeApplicantPage = Math.min(applicantPage, applicantTotalPages);
   const pagedApplicants = applicants;
+
   const applicantPageNumbers = useMemo(() => {
     const visibleCount = Math.min(applicantTotalPages, 5);
     const start = Math.max(
@@ -1294,7 +1303,11 @@ export function AdminPage() {
 
               <div className="mt-3 flex flex-col gap-2">
                 {contactLinks.map((link) => (
-                  <div key={link.id} className="flex items-center gap-2">
+                  // 모바일: [이름][삭제] / [내용] 두 줄로 나눠 내용 칸이 좁아지지 않게 한다.
+                  <div
+                    key={link.id}
+                    className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 p-2 sm:flex-nowrap sm:border-0 sm:p-0"
+                  >
                     <Input
                       value={link.label}
                       onChange={(e) =>
@@ -1302,7 +1315,7 @@ export function AdminPage() {
                       }
                       placeholder="예: 인스타그램 또는 회장 연락처"
                       aria-label="연락처 이름"
-                      className="h-10 w-32 shrink-0 bg-white sm:w-40"
+                      className="h-10 min-w-0 flex-1 bg-white sm:w-40 sm:flex-none"
                     />
                     <Input
                       value={link.value}
@@ -1313,7 +1326,7 @@ export function AdminPage() {
                       maxLength={2048}
                       placeholder="이메일, 전화번호 또는 링크"
                       aria-label="연락처 내용"
-                      className="h-10 flex-1 bg-white"
+                      className="order-last h-10 basis-full bg-white sm:order-none sm:basis-auto sm:flex-1"
                     />
                     <button
                       type="button"
@@ -1521,7 +1534,7 @@ export function AdminPage() {
                 신청서 관리
               </h2>
               <span className="rounded-full bg-[#EEF4FF] px-3 py-1 text-lg font-extrabold text-[#1F4F95]">
-                총 {applicantTotal}명
+                {applicantTotal}명
               </span>
             </div>
 
@@ -1565,8 +1578,25 @@ export function AdminPage() {
             </div>
           </div>
 
-          <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200">
-            <div className="overflow-x-auto">
+          <div className="relative mt-6 overflow-hidden rounded-2xl border border-slate-200">
+            {/* 표가 가려질 때만 나타나는 좌우 이동 버튼. 행을 가리지 않도록 헤더 줄 높이에 맞춰 띄운다. */}
+            {applicantsScroll.canScrollPrev && (
+              <ScrollArrowButton
+                direction="prev"
+                onClick={() => applicantsScroll.scroll("prev")}
+                label="이전 항목 보기"
+                className="absolute left-2 top-6 -translate-y-1/2"
+              />
+            )}
+            {applicantsScroll.canScrollNext && (
+              <ScrollArrowButton
+                direction="next"
+                onClick={() => applicantsScroll.scroll("next")}
+                label="다음 항목 보기"
+                className="absolute right-2 top-6 -translate-y-1/2"
+              />
+            )}
+            <div ref={applicantsScroll.ref} className="overflow-x-auto">
               <table className="min-w-[760px] w-full table-fixed">
               <thead className="bg-[#F8FAFD]">
                 <tr className="h-12 text-left text-sm font-semibold text-slate-500">
