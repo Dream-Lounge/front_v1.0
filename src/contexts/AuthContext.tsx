@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, type ReactNode } from "react";
+import { startTransition, useState, useCallback, useEffect, type ReactNode } from "react";
 import { api, isSessionExpiredError, type User } from "@/lib/api";
 import { AuthContext } from "./auth";
 import { SessionExpiredDialog } from "@/components/common/SessionExpiredDialog";
@@ -75,6 +75,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const deleteAccount = useCallback(async () => {
+    await api.deleteAccount();
+    // 탈퇴한 계정으로는 로그아웃 요청도 실패하므로 서버를 거치지 않고 상태만 비운다.
+    api.clearTokens();
+    // 라우터 이동과 같은 전환(transition)으로 묶어, 호출한 쪽의 navigate()와 한 번에 반영되게 한다.
+    // 그렇지 않으면 로그인 상태가 먼저 비워져 보호된 페이지가 /login으로 튕겨 낸다.
+    startTransition(() => {
+      setUser(null);
+      setManagedClubs([]);
+    });
+  }, []);
+
   const handleSessionExpired = useCallback(() => {
     api.clearTokens();
     setUser(null);
@@ -97,6 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isClubAdmin: managedClubs.length > 0,
         login,
         logout,
+        deleteAccount,
         handleSessionExpired,
       }}
     >

@@ -10,6 +10,8 @@ export interface AuthContextType {
   isClubAdmin: boolean;
   login: (studentId: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  /** 회원탈퇴 후 로그인 상태를 비웁니다. */
+  deleteAccount: () => Promise<void>;
   handleSessionExpired: () => void;
 }
 
