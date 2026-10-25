@@ -32,6 +32,8 @@ interface DepartmentComboboxProps {
   emptyText?: string;
   /** 회원가입 시안: 좌측 학위모자·우측 검색 아이콘·플레이스홀더 문구 */
   variant?: "default" | "signup";
+  /** 트리거 버튼에 덧붙일 클래스 (높이 맞춤 등) */
+  className?: string;
 }
 
 /**
@@ -48,6 +50,7 @@ export function DepartmentCombobox({
   searchPlaceholder = "학과 검색...",
   emptyText = "검색 결과가 없습니다.",
   variant = "default",
+  className,
 }: DepartmentComboboxProps) {
   const [open, setOpen] = useState(false);
 
@@ -67,6 +70,7 @@ export function DepartmentCombobox({
             "w-full justify-between font-normal",
             variant === "signup" && "h-11 gap-2 px-3",
             hasError && "border-destructive focus-visible:ring-destructive",
+            className,
           )}
         >
           {variant === "signup" ? (
