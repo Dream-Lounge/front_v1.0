@@ -75,7 +75,7 @@ export function ClubApplication() {
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   useEffect(() => {
@@ -84,7 +84,7 @@ export function ClubApplication() {
 
     const load = async () => {
       setIsDataLoading(true);
-      setSubmitError(null);
+      setLoadError(null);
       try {
         let resolvedClubId = id;
         let initialAnswers: Record<string, string> = {};
@@ -155,7 +155,7 @@ export function ClubApplication() {
         setAnswers(initialAnswers);
       } catch (error) {
         if (active && !isSessionExpiredError(error)) {
-          setSubmitError(error instanceof Error ? error.message : "지원서 정보를 불러오지 못했습니다.");
+          setLoadError(error instanceof Error ? error.message : "지원서 정보를 불러오지 못했습니다.");
         }
       } finally {
         if (active) setIsDataLoading(false);
@@ -233,7 +233,6 @@ export function ClubApplication() {
   const confirmSubmit = async () => {
     if (!id || !form || mode === "view") return;
     setIsSubmitting(true);
-    setSubmitError(null);
     try {
       if (isGuest) await api.createGuestApplication(form.id, buildAnswers(), buildApplicantInfo());
       else if (mode === "create") await api.createApplication(form.id, buildAnswers(), false, buildApplicantInfo());
@@ -244,7 +243,7 @@ export function ClubApplication() {
     } catch (error) {
       setIsConfirmOpen(false);
       if (!isSessionExpiredError(error)) {
-        setSubmitError(error instanceof Error ? error.message : "지원서 제출에 실패했습니다.");
+        toast.error(error instanceof Error ? error.message : "지원서 제출에 실패했습니다.");
       }
     } finally {
       setIsSubmitting(false);
@@ -254,7 +253,6 @@ export function ClubApplication() {
   const handleSaveDraft = async () => {
     if (!id || !form || mode === "view") return;
     setIsSubmitting(true);
-    setSubmitError(null);
     try {
       if (mode === "create") {
         await api.createApplication(form.id, buildAnswers(), true, buildApplicantInfo());
@@ -267,7 +265,7 @@ export function ClubApplication() {
       navigate(user ? `/users/${user.studentId}/drafts` : "/", { replace: true });
     } catch (error) {
       if (!isSessionExpiredError(error)) {
-        setSubmitError(error instanceof Error ? error.message : "임시저장에 실패했습니다.");
+        toast.error(error instanceof Error ? error.message : "임시저장에 실패했습니다.");
       }
     } finally {
       setIsSubmitting(false);
@@ -286,7 +284,7 @@ export function ClubApplication() {
   if (!form) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
-        <p className="font-medium text-destructive">{submitError ?? "활성화된 신청폼이 없습니다."}</p>
+        <p className="font-medium text-destructive">{loadError ?? "활성화된 신청폼이 없습니다."}</p>
         <Button variant="outline" onClick={() => navigate(-1)}>뒤로 가기</Button>
       </div>
     );
@@ -340,7 +338,6 @@ export function ClubApplication() {
             </CardContent>
           </Card>
 
-          {submitError && <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">{submitError}</div>}
           {!isReadOnly && (
             <div className={cn("grid grid-cols-1 gap-3", !isGuest && "sm:grid-cols-2")}>
               {/* 비회원은 임시저장을 쓸 수 없다. */}
