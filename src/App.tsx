@@ -19,6 +19,7 @@ import { ClubNews } from "@/pages/ClubNews";
 import { Support } from "@/pages/Support";
 import { About } from "@/pages/About";
 import { AccountPage } from "@/pages/AccountPage";
+import { InterestSelection } from "@/pages/InterestSelection";
 import { NotFound } from "@/pages/error/NotFound";
 import { FEATURES } from "@/config/features";
 
@@ -68,6 +69,7 @@ function App() {
             <Route path="/users/:studentId/drafts" element={<ApplicationDrafts />} />
             <Route path="/users/:studentId/applications" element={<ApplicationStatus />} />
             <Route path="/account" element={<AccountPage />} />
+            <Route path="/onboarding/interests" element={<InterestSelection />} />
           </Route>
 
           {/* 배포에서 제외된 경로 등 매칭되지 않는 경로 */}

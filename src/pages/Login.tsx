@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { validators, ERROR_MESSAGES } from "@/lib/validators";
 import { useAuth } from "@/hooks/useAuth";
 import { isSessionExpiredError } from "@/lib/api";
+import { hasCompletedInterests } from "@/lib/interests";
 
 /**
  * 로그인 페이지 컴포넌트
@@ -62,7 +63,8 @@ export function Login() {
 
     try {
       await login(studentId, password);
-      navigate("/");
+      // 회원가입 후 첫 로그인이면 관심 분야 선택 화면을 먼저 보여 준다.
+      navigate(hasCompletedInterests(studentId) ? "/" : "/onboarding/interests");
     } catch (error) {
       // 세션 만료는 전역 다이얼로그가 안내하므로 로그인 정보 오류로
       // 중복 표시하지 않는다.
@@ -210,6 +212,7 @@ export function Login() {
                   회원가입
                 </Button>
               </p>
+
             </FieldGroup>
           </form>
         </CardContent>
