@@ -50,6 +50,8 @@ function App() {
           {FEATURES.clubCommunity && (
             <Route path="/club/:id/community" element={<ClubCommunity />} />
           )}
+          {/* 비회원 지원을 허용하므로 보호 라우트 밖에 둔다. 비회원 모드가 아니면 페이지가 로그인으로 보낸다. */}
+          <Route path="/club/:id/apply" element={<ClubApplication />} />
           <Route element={<AdminRoute />}>
             <Route path="/admin" element={<AdminPage />} />
           </Route>
@@ -57,7 +59,6 @@ function App() {
             {FEATURES.myClubs && (
               <Route path="/users/:studentId/clubs" element={<MyClubs />} />
             )}
-            <Route path="/club/:id/apply" element={<ClubApplication />} />
             <Route
               path="/applications/:id/edit"
               element={<ClubApplication />}

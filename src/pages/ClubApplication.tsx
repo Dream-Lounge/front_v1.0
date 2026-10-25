@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { AlertTriangle, ArrowLeft, Check, FileText, HelpCircle, Loader2, Save, Send, Users } from "lucide-react";
 import {
@@ -55,6 +55,8 @@ export function ClubApplication() {
   const navigate = useNavigate();
   const { user, isLoading: isAuthLoading } = useAuth();
   const mode = getMode(location.pathname);
+  // 로그인 화면의 '비회원으로 지원하기'로 들어온 경우에만 비회원 작성을 허용한다.
+  const isGuest = !user && mode === "create" && (location.state as { guest?: boolean } | null)?.guest === true;
 
   const [clubId, setClubId] = useState("");
   const [clubName, setClubName] = useState("");
@@ -77,7 +79,7 @@ export function ClubApplication() {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   useEffect(() => {
-    if (isAuthLoading || !id) return;
+    if (isAuthLoading || !id || (!user && !isGuest)) return;
     let active = true;
 
     const load = async () => {
@@ -97,7 +99,7 @@ export function ClubApplication() {
           grade: "",
         };
 
-        if (mode === "create") {
+        if (mode === "create" && user) {
           const [hasSubmitted, drafts] = await Promise.all([
             api.checkApplicationStatus(id),
             api.getDraftApplications(),
@@ -113,7 +115,7 @@ export function ClubApplication() {
             navigate(user ? `/users/${user.studentId}/applications` : "/", { replace: true });
             return;
           }
-        } else {
+        } else if (mode !== "create") {
           const application = mode === "edit"
             ? await api.getDraftApplication(id)
             : await api.getSubmittedApplication(id);
@@ -162,7 +164,7 @@ export function ClubApplication() {
 
     void load();
     return () => { active = false; };
-  }, [id, isAuthLoading, mode, navigate, user]);
+  }, [id, isAuthLoading, isGuest, mode, navigate, user]);
 
   const orderedQuestions = useMemo(
     () => [...(form?.questions ?? [])].sort((a, b) => a.order_index - b.order_index),
@@ -233,7 +235,8 @@ export function ClubApplication() {
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      if (mode === "create") await api.createApplication(form.id, buildAnswers(), false, buildApplicantInfo());
+      if (isGuest) await api.createGuestApplication(form.id, buildAnswers(), buildApplicantInfo());
+      else if (mode === "create") await api.createApplication(form.id, buildAnswers(), false, buildApplicantInfo());
       else await api.patchApplication(id, buildAnswers(), buildApplicantInfo(), false);
       toast.success("지원서가 성공적으로 제출되었습니다.");
       setIsConfirmOpen(false);
@@ -270,6 +273,11 @@ export function ClubApplication() {
       setIsSubmitting(false);
     }
   };
+
+  // 로그인하지 않았고 비회원 모드도 아니면 로그인 화면으로 보낸다. (로그인 화면에서 비회원 지원을 고를 수 있다)
+  if (!isAuthLoading && !user && !isGuest) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  }
 
   if (isAuthLoading || isDataLoading) {
     return <div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="size-8 animate-spin text-primary" /></div>;
@@ -317,7 +325,7 @@ export function ClubApplication() {
                 <ApplicantFieldInput label="전화번호" field="phone" value={applicantInfo.phone} error={applicantErrors.phone} readOnly={isReadOnly} inputMode="numeric" maxLength={11} placeholder="하이픈 없이 입력" onChange={(value) => setApplicantField("phone", value.replace(/\D/g, ""))} />
                 <ApplicantFieldInput label="학년" field="grade" value={applicantInfo.grade} error={applicantErrors.grade} readOnly={isReadOnly} inputMode="numeric" maxLength={1} placeholder="예: 2" onChange={(value) => setApplicantField("grade", value.replace(/\D/g, ""))} />
               </FieldGroup>
-              {!isReadOnly && <p className="mt-5 text-xs text-muted-foreground">학번은 가입 정보로 자동 입력되며, 잘못 입력한 경우 이 신청서에서 수정할 수 있습니다.</p>}
+              {!isReadOnly && !isGuest && <p className="mt-5 text-xs text-muted-foreground">학번은 가입 정보로 자동 입력되며, 잘못 입력한 경우 이 신청서에서 수정할 수 있습니다.</p>}
             </CardContent>
           </Card>
 
@@ -334,8 +342,9 @@ export function ClubApplication() {
 
           {submitError && <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">{submitError}</div>}
           {!isReadOnly && (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Button variant="outline" size="lg" className="w-full py-6 text-base font-bold" onClick={handleSaveDraft} disabled={isSubmitting}><Save className="mr-2 size-5" /> 임시저장</Button>
+            <div className={cn("grid grid-cols-1 gap-3", !isGuest && "sm:grid-cols-2")}>
+              {/* 비회원은 임시저장을 쓸 수 없다. */}
+              {!isGuest && <Button variant="outline" size="lg" className="w-full py-6 text-base font-bold" onClick={handleSaveDraft} disabled={isSubmitting}><Save className="mr-2 size-5" /> 임시저장</Button>}
               <Button size="lg" className="w-full py-6 text-base font-bold" onClick={handleSubmit} disabled={isSubmitting}>{isSubmitting ? <Loader2 className="mr-2 size-5 animate-spin" /> : <Send className="mr-2 size-5" />} 지원서 제출</Button>
             </div>
           )}

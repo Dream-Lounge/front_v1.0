@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel, FieldGroup } from "@/components/ui/field";
-import { LogIn, Eye, EyeOff, Loader2 } from "lucide-react";
+import { LogIn, Eye, EyeOff, Loader2, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { validators, ERROR_MESSAGES } from "@/lib/validators";
 import { useAuth } from "@/hooks/useAuth";
@@ -18,6 +18,20 @@ import { hasCompletedInterests } from "@/lib/interests";
  */
 export function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  // 지원서 작성 중 로그인 화면으로 왔다면 '비회원으로 지원하기', 아니면 '비회원으로 둘러보기'를 보여 준다.
+  const from = (location.state as { from?: string } | null)?.from;
+  const applyPath = from && /^\/club\/[^/]+\/apply$/.test(from) ? from : null;
+
+  const continueAsGuest = () => {
+    if (applyPath) {
+      navigate(applyPath, { state: { guest: true } });
+    } else if ((window.history.state as { idx?: number } | null)?.idx) {
+      navigate(-1);
+    } else {
+      navigate("/");
+    }
+  };
   const { login } = useAuth();
 
   // 폼 필드 상태
@@ -213,6 +227,29 @@ export function Login() {
                 </Button>
               </p>
 
+              <div className="flex items-center gap-3 text-xs text-muted-foreground" aria-hidden>
+                <span className="h-px flex-1 bg-border" />
+                또는
+                <span className="h-px flex-1 bg-border" />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  className="w-full py-6 text-base font-semibold"
+                  onClick={continueAsGuest}
+                >
+                  <UserRound className="mr-2 h-5 w-5" />
+                  {applyPath ? "비회원으로 지원하기" : "비회원으로 둘러보기"}
+                </Button>
+                {applyPath && (
+                  <p className="text-center text-xs text-muted-foreground">
+                    비회원은 제출 후 수정·삭제·임시저장·지원 상태 확인을 할 수 없어요.
+                  </p>
+                )}
+              </div>
             </FieldGroup>
           </form>
         </CardContent>

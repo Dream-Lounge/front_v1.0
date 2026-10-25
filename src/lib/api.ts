@@ -597,6 +597,22 @@ class ApiClient {
     });
   }
 
+  /** 비회원 지원서 제출 (로그인 토큰 없이 요청하며, 실패해도 세션 만료 처리를 하지 않는다) */
+  createGuestApplication(
+    formId: string,
+    answers: ApplicationAnswerInput[],
+    applicantInfo: ApplicantInfoInput,
+  ): Promise<ApiApplicationDetail> {
+    return this.request<ApiApplicationDetail>(
+      "/applications",
+      {
+        method: "POST",
+        body: JSON.stringify({ form_id: formId, is_draft: false, answers, ...applicantInfo }),
+      },
+      false,
+    );
+  }
+
   patchApplication(
     applicationId: string,
     answers: ApplicationAnswerInput[],
