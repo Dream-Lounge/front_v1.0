@@ -1,7 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { ArrowLeft, Check, FileText, HelpCircle, Loader2, Save, Send, Users } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, FileText, HelpCircle, Loader2, Save, Send, Users } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -64,6 +74,7 @@ export function ClubApplication() {
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (isAuthLoading || !id) return;
@@ -209,18 +220,26 @@ export function ClubApplication() {
     return !Object.values(next).some(Boolean);
   };
 
-  const handleSubmit = async () => {
+  /** 입력값 검사를 통과하면 제출 전 안내 팝업을 띄운다. 실제 제출은 팝업에서 확인한 뒤 진행한다. */
+  const handleSubmit = () => {
     const isApplicantInfoValid = validateApplicantInfo();
     const areAnswersValid = validate();
     if (!id || !form || mode === "view" || !isApplicantInfoValid || !areAnswersValid) return;
+    setIsConfirmOpen(true);
+  };
+
+  const confirmSubmit = async () => {
+    if (!id || !form || mode === "view") return;
     setIsSubmitting(true);
     setSubmitError(null);
     try {
       if (mode === "create") await api.createApplication(form.id, buildAnswers(), false, buildApplicantInfo());
       else await api.patchApplication(id, buildAnswers(), buildApplicantInfo(), false);
       toast.success("지원서가 성공적으로 제출되었습니다.");
+      setIsConfirmOpen(false);
       navigate(user ? `/users/${user.studentId}/applications` : `/club/${clubId}`);
     } catch (error) {
+      setIsConfirmOpen(false);
       if (!isSessionExpiredError(error)) {
         setSubmitError(error instanceof Error ? error.message : "지원서 제출에 실패했습니다.");
       }
@@ -320,6 +339,51 @@ export function ClubApplication() {
               <Button size="lg" className="w-full py-6 text-base font-bold" onClick={handleSubmit} disabled={isSubmitting}>{isSubmitting ? <Loader2 className="mr-2 size-5 animate-spin" /> : <Send className="mr-2 size-5" />} 지원서 제출</Button>
             </div>
           )}
+
+          {/* 제출 전 안내: 회원은 제출 후 삭제·회수 불가, 비회원은 이후 관리 기능을 쓸 수 없음 */}
+          <AlertDialog open={isConfirmOpen} onOpenChange={(open) => { if (!isSubmitting) setIsConfirmOpen(open); }}>
+            <AlertDialogContent className="gap-5 py-9">
+              <AlertDialogHeader className="gap-5 text-center sm:text-center">
+                <AlertDialogTitle>지원서를 제출할까요?</AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                  <div className="space-y-5 text-sm">
+                    <div className="mx-auto flex w-fit max-w-full gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-5 text-left text-amber-900">
+                      <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
+                      {user ? (
+                        <p>
+                          제출한 지원서는 <strong>삭제하거나 회수할 수 없습니다.</strong>
+                        </p>
+                      ) : (
+                        <div>
+                          <p>비회원으로 제출하면 제출 후 아래 기능을 이용할 수 없습니다.</p>
+                          <ul className="mt-1.5 list-disc space-y-0.5 pl-4 font-semibold">
+                            <li>지원서 수정·삭제</li>
+                            <li>임시저장</li>
+                            <li>지원 상태 확인</li>
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                    <p>제출하기 전에 작성한 내용을 한 번 더 확인해주세요.</p>
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="sm:justify-center">
+                <AlertDialogCancel disabled={isSubmitting}>취소</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(event) => {
+                    // 제출 요청이 끝날 때까지 팝업을 닫지 않는다.
+                    event.preventDefault();
+                    void confirmSubmit();
+                  }}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting && <Loader2 className="size-4 animate-spin" aria-hidden />}
+                  제출하기
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
     </div>
