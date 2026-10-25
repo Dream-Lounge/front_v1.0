@@ -61,6 +61,8 @@ button:disabled { cursor: not-allowed; }
 .dream-hero-controls button { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; }
 .dream-hero-controls button:hover { background: #eaf2fc; color: #0875e1; }
 .dream-recruiting { grid-template-columns: minmax(0,1fr) 292px; gap: 36px; padding-top: 36px; border-top: 1px solid #e5e7e9; }
+/* 추천 섹션에서 안내만 보여 줄 때는 우측 컬럼 없이 한 칸으로 쓴다. */
+.dream-recruiting.dream-recruiting--single { grid-template-columns: minmax(0,1fr); }
 .dream-recruiting h2 { font-size: 1.5rem; line-height: 1.4; letter-spacing: -.04em; font-weight: 700; }
 /* 위아래 여백을 같게 두어야 카드 하단이 우측 분과 목록과 정확히 맞는다. */
 .dream-club-track { padding: 4px 2px; gap: 16px; scroll-snap-type: x mandatory; }

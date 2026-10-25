@@ -1,5 +1,7 @@
 import { HeroCarousel } from "@/components/home/HeroCarousel";
 import { RecruitingSection } from "@/components/home/RecruitingSection";
+import { RecommendedSection } from "@/components/home/RecommendedSection";
+import { FEATURES } from "@/config/features";
 
 /**
  * 메인 홈 페이지 컴포넌트
@@ -13,6 +15,9 @@ export function Home() {
 
       {/** 모집중인 동아리 및 분과별 섹션 (기존 검색 섹션 대체) */}
       <RecruitingSection />
+
+      {/** 관심 분야 기반 AI 추천 동아리 (배포 범위는 기능 플래그로 조절) */}
+      {FEATURES.aiRecommend && <RecommendedSection />}
     </div>
   );
 }
