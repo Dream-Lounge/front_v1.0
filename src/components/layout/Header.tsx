@@ -107,6 +107,12 @@ export function Header() {
                                             임시저장함
                                         </Link>
                                         <Link
+                                            to="/account"
+                                            className="w-full px-3 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-sm transition-colors text-left"
+                                        >
+                                            계정 관리
+                                        </Link>
+                                        <Link
                                             to="/admin"
                                             className="w-full px-3 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-sm transition-colors text-left"
                                         >
