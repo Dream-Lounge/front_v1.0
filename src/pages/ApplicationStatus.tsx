@@ -64,16 +64,23 @@ function ApplicationItem({ application }: ApplicationItemProps) {
         />
       </div>
 
-      <div className="flex flex-col flex-1 gap-3 min-w-0">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge
-              variant="outline"
-              className="bg-blue-50 font-semibold text-primary border-blue-200 hover:bg-blue-50"
-            >
-              {application.category}
-            </Badge>
-            <Badge {...STATUS_BADGE_CONFIG[application.status]} />
+      {/* 뱃지·동아리 이름·지원일을 한 묶음으로 박스 세로 가운데에 두고, 버튼도 같은 높이에 맞춘다. */}
+      <div className="flex flex-col flex-1 justify-center gap-3 min-w-0">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-col gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge
+                variant="outline"
+                className="bg-blue-50 font-semibold text-primary border-blue-200 hover:bg-blue-50"
+              >
+                {application.category}
+              </Badge>
+              <Badge {...STATUS_BADGE_CONFIG[application.status]} />
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <h3 className="text-xl font-bold text-foreground">{application.clubName}</h3>
+              <p className="text-sm text-muted-foreground">지원일: {application.appliedDate}</p>
+            </div>
           </div>
 
           <div className="flex flex-row gap-2 items-center shrink-0">
@@ -86,11 +93,6 @@ function ApplicationItem({ application }: ApplicationItemProps) {
               지원서 보기
             </Button>
           </div>
-        </div>
-
-        <div className="flex flex-col gap-0.5">
-          <h3 className="text-xl font-bold text-foreground">{application.clubName}</h3>
-          <p className="text-sm text-muted-foreground">지원일: {application.appliedDate}</p>
         </div>
 
         {application.adminComment && (
