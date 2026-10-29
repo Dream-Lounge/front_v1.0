@@ -16,6 +16,8 @@ export interface PosterClub {
   endDate: string;
   image: string;
   aiRecommended?: boolean;
+  /** 카드 아래쪽에 #태그로 보여 줄 키워드 (예: 추천 이유가 된 관심 분야) */
+  tags?: string[];
 }
 
 interface ClubCardRailProps {
@@ -72,6 +74,15 @@ export function ClubCardRail({ clubs, emptyState }: ClubCardRailProps) {
                 )}
               </div>
               <div>
+                {club.tags && club.tags.length > 0 && (
+                  <div className="mb-1.5 flex flex-wrap gap-1">
+                    {club.tags.map((tag) => (
+                      <span key={tag} className="rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold backdrop-blur-sm">
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <h3 className="mb-0.5 line-clamp-1 text-base font-bold drop-shadow-md">
                   {club.title}
                 </h3>

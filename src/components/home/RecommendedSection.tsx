@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check } from "lucide-react";
+import { Check, Sparkles } from "lucide-react";
 import { api, type ClubResponse } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { getStoredInterests } from "@/lib/interests";
@@ -49,12 +49,14 @@ export function RecommendedSection() {
 
   const posters: PosterClub[] = recommended
     .filter(({ matched }) => !focused || matched.includes(focused))
-    .map(({ club }) => ({
+    .map(({ club, matched }) => ({
       id: club.id,
       title: club.name,
       category: club.division || club.club_type || "기타",
       endDate: club.is_recruiting ? club.recruit_end?.replaceAll("-", ".") || "상시모집" : "모집 마감",
       image: club.image_url || "/logo.svg",
+      // 추천 이유가 된 관심 분야를 카드에 #태그로 보여 준다. (공간상 최대 2개)
+      tags: matched.slice(0, 2),
     }));
 
   // 로그인 전이거나 관심 분야를 고르지 않았다면 카드 대신 안내만 한 칸 너비로 보여 준다.
@@ -91,14 +93,19 @@ export function RecommendedSection() {
   return (
     <div
       className={cn(
-        "dream-recruiting grid grid-cols-1 gap-8 lg:gap-12",
+        "dream-recruiting dream-recommend grid grid-cols-1 gap-8 lg:gap-12",
         needsSetup ? "dream-recruiting--single" : "lg:grid-cols-[minmax(0,1fr)_24rem]",
       )}
     >
       {/* 좌측 컬럼: AI 추천 동아리 (타이틀 + 가로 스크롤 카드) */}
       <div className="flex min-w-0 flex-col gap-6">
         <div className="flex items-center justify-between gap-4">
-          <h2 className="text-2xl font-extrabold text-gray-900 sm:text-3xl">AI 추천 동아리</h2>
+          <h2 className="flex items-center gap-2 text-2xl font-extrabold text-gray-900 sm:text-3xl">
+            <Sparkles className="size-6 shrink-0 text-primary" aria-hidden />
+            <span>
+              <span className="dream-ai-gradient">AI</span> 추천 동아리
+            </span>
+          </h2>
         </div>
         <ClubCardRail clubs={needsSetup ? [] : posters} emptyState={emptyState} />
       </div>
