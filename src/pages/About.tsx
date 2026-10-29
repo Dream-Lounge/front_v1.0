@@ -7,6 +7,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { FEATURES } from "@/config/features";
+import { GuideSteps } from "@/components/common/GuideSteps";
 
 const ALL_FEATURE_CARDS = [
   {
@@ -52,32 +53,6 @@ const ALL_FEATURE_CARDS = [
 ] as const;
 
 const FEATURE_CARDS = ALL_FEATURE_CARDS.filter((feature) => feature.show);
-
-const STEPS = [
-  {
-    title: "회원가입",
-    description: "학번으로 간편하게 가입하고 로그인해 주세요.",
-  },
-  {
-    title: "동아리 둘러보기",
-    description: "다양한 동아리의 소개와 모집 정보를 살펴보세요.",
-  },
-  {
-    title: "지원서 작성",
-    description:
-      "마음에 드는 동아리를 선택하고 “지원하기” 버튼을 통해 지원서를 작성해 주세요.",
-  },
-  {
-    title: "임시저장함 이용",
-    description:
-      "아직 작성이 끝나지 않았다면 임시저장해도 괜찮아요. 임시저장함에서 지원서를 다시 불러와 언제든 이어서 작성할 수 있어요.",
-  },
-  {
-    title: "진행 상태 확인",
-    description:
-      "지원서를 제출한 뒤 마이페이지에서 제출 내역과 진행 상태를 확인하세요.",
-  },
-] as const;
 
 /**
  * 서비스 소개 페이지
@@ -140,28 +115,7 @@ export function About() {
           <h2 className="break-keep text-xl font-bold text-foreground sm:text-2xl">
             동아리 가입, 이렇게 진행돼요
           </h2>
-          <ol className="flex flex-col">
-            {STEPS.map((step, index) => (
-              <li
-                key={step.title}
-                className="relative flex flex-col gap-1.5 border-l-2 border-border pb-7 pl-6 last:border-l-transparent last:pb-0"
-              >
-                <span
-                  className="absolute -left-[6px] top-1.5 size-2.5 rounded-full bg-primary ring-4 ring-background"
-                  aria-hidden
-                />
-                <span className="text-sm font-bold text-primary">
-                  STEP {index + 1}
-                </span>
-                <h3 className="break-keep font-bold text-foreground">
-                  {step.title}
-                </h3>
-                <p className="break-keep text-sm leading-relaxed text-muted-foreground">
-                  {step.description}
-                </p>
-              </li>
-            ))}
-          </ol>
+          <GuideSteps />
         </section>
       </div>
     </div>

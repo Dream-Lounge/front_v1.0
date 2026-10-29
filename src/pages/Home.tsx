@@ -2,6 +2,7 @@ import { HeroCarousel } from "@/components/home/HeroCarousel";
 import { RecruitingSection } from "@/components/home/RecruitingSection";
 import { RecommendedSection } from "@/components/home/RecommendedSection";
 import { FEATURES } from "@/config/features";
+import { GuideDialog } from "@/components/home/GuideDialog";
 
 /**
  * 메인 홈 페이지 컴포넌트
@@ -18,6 +19,9 @@ export function Home() {
 
       {/** 관심 분야 기반 AI 추천 동아리 (배포 범위는 기능 플래그로 조절) */}
       {FEATURES.aiRecommend && <RecommendedSection />}
+
+      {/** 진입 시 이용 가이드 팝업 ('오늘 하루 보지 않기' 지원) */}
+      <GuideDialog />
     </div>
   );
 }
