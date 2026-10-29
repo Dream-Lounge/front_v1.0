@@ -35,10 +35,10 @@ export function ClubCardRail({ clubs, emptyState }: ClubCardRailProps) {
   const clubScroll = useHorizontalScroll<HTMLDivElement>();
 
   return (
-    <div className="relative min-w-0 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+    <div className="dream-club-rail relative min-w-0">
       <div
         ref={clubScroll.ref}
-        className="dream-club-track flex items-stretch gap-3 overflow-x-auto scroll-smooth lg:h-full [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="dream-club-track flex items-stretch gap-3 overflow-x-auto scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {clubs.length === 0 && emptyState}
         {clubs.map((club) => (

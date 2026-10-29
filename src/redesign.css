@@ -26,7 +26,7 @@ button:disabled { cursor: not-allowed; }
 .dream-user { color: var(--primary); background: #edf4fc; border: 1px solid #dae9fa; width: 42px; height: 42px; }
 .dream-header input { height: 38px; background: #fff; border-radius: 10px; box-shadow: none; }
 .dream-main { padding-top: 48px; }
-.dream-home { gap: 60px; }
+.dream-home { gap: 60px; container-type: inline-size; }
 .dream-hero { position: relative; padding: 6px 0 0; }
 .dream-hero-slide { display: block; }
 .dream-hero-banner { width: 100%; height: auto; aspect-ratio: 50 / 9; object-fit: cover; border-radius: 14px; border: 1px solid #e6e8eb; }
@@ -69,11 +69,19 @@ button:disabled { cursor: not-allowed; }
 .dream-recruiting h2 { font-size: 1.5rem; line-height: 1.4; letter-spacing: -.04em; font-weight: 700; }
 /* 위아래 여백을 같게 두어야 카드 하단이 우측 분과 목록과 정확히 맞는다. */
 .dream-club-track { padding: 4px 2px; gap: 16px; scroll-snap-type: x mandatory; }
-/* 카드 높이를 고정하면 우측 분과 목록보다 짧아져 아래에 빈 공간이 생긴다.
-   데스크톱에서는 컬럼 높이를 채우고 3:4 비율로 폭이 정해지도록 둔다. */
 .dream-recruiting .dream-club-card { width: 216px; height: 276px; border-radius: 20px; scroll-snap-align: start; box-shadow: none; }
+/* 768px 이상: '모집중인 동아리'와 'AI 추천 동아리'가 같은 크기의 카드를 한 줄에 정확히 3장씩 보여 준다.
+   카드 폭은 더 좁은 쪽(패널 안쪽 여백 32px×2가 있는 AI 추천)의 줄에 3장이 딱 맞도록 홈 너비(cqw)로 계산하고,
+   두 줄 모두 3장 너비로 제한해 남는 폭은 여백으로 둔다.
+   - 한 칸 배치: 홈 너비 - 패널 여백 64 - 줄 안쪽 여백 4 - 카드 간격 32
+   - 두 칸 배치(1024px~): 위에서 우측 컬럼 292와 컬럼 간격 36을 더 뺀다 */
+@media(min-width:768px) {
+ .dream-recruiting { --dream-card-w: calc((100cqw - 100px) / 3); }
+ .dream-recruiting .dream-club-card { width: var(--dream-card-w); height: auto; aspect-ratio: 3 / 4; }
+ .dream-recruiting .dream-club-rail { width: 100%; max-width: calc(var(--dream-card-w) * 3 + 36px); }
+}
 @media(min-width:1024px) {
- .dream-recruiting .dream-club-card { width: auto; height: 100%; aspect-ratio: 3 / 4; }
+ .dream-recruiting { --dream-card-w: calc((100cqw - 428px) / 3); }
 }
 /* 포스터 이미지 위에 얹히는 분과 뱃지 — 기본 뱃지(12px)로는 작아서 키운다. */
 .dream-club-card [data-slot="badge"] { font-size: .8125rem; padding: 4px 11px; }
