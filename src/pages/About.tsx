@@ -138,7 +138,7 @@ export function About() {
         {/* 이용 방법 */}
         <section className="flex flex-col gap-5">
           <h2 className="break-keep text-xl font-bold text-foreground sm:text-2xl">
-            이렇게 시작하세요
+            동아리 가입, 이렇게 진행돼요
           </h2>
           <ol className="flex flex-col">
             {STEPS.map((step, index) => (
