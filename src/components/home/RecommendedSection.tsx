@@ -1,18 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Check, Sparkles } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Check, ChevronRight, Sparkles } from "lucide-react";
 import { api, type ClubResponse } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { getStoredInterests } from "@/lib/interests";
 import { recommendClubs } from "@/lib/recommend";
 import { cn } from "@/lib/utils";
-import { ClubCardRail, type PosterClub } from "@/components/home/ClubCardRail";
 
 /**
- * AI 추천 동아리 섹션 (모집중인 동아리 섹션과 같은 구성)
- * - 좌측: 관심 분야와 겹치는 동아리를 가로 스크롤 한 줄로 표시합니다.
+ * AI 추천 동아리 섹션
+ * - 좌측: 관심 분야와 겹치는 동아리를 리스트로 보여 줍니다. (모집중인 동아리의 포스터 카드와 구분)
  * - 우측: 내가 고른 관심 분야를 칩으로 보여 줍니다. 누르면 그 분야로 좁혀 보고, 다시 누르면 해제합니다.
  */
+/** 리스트에 보여 줄 최대 동아리 수 */
+const MAX_ROWS = 5;
+
 export function RecommendedSection() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -42,17 +44,9 @@ export function RecommendedSection() {
 
   const recommended = useMemo(() => recommendClubs(clubs, interests), [clubs, interests]);
 
-  const posters: PosterClub[] = recommended
+  const rows = recommended
     .filter(({ matched }) => !focused || matched.includes(focused))
-    .map(({ club, matched }) => ({
-      id: club.id,
-      title: club.name,
-      category: club.division || club.club_type || "기타",
-      endDate: club.is_recruiting ? club.recruit_end?.replaceAll("-", ".") || "상시모집" : "모집 마감",
-      image: club.image_url || "/logo.svg",
-      // 추천 이유가 된 관심 분야를 카드에 #태그로 보여 준다. (공간상 최대 2개)
-      tags: matched.slice(0, 2),
-    }));
+    .slice(0, MAX_ROWS);
 
   // 로그인 전이거나 관심 분야를 고르지 않았다면 카드 대신 안내만 한 칸 너비로 보여 준다.
   const needsSetup = !user || interests.length === 0;
@@ -102,7 +96,44 @@ export function RecommendedSection() {
             </span>
           </h2>
         </div>
-        <ClubCardRail clubs={needsSetup ? [] : posters} emptyState={emptyState} />
+        {needsSetup || rows.length === 0 ? (
+          emptyState
+        ) : (
+          <ul className="flex flex-col overflow-hidden rounded-2xl border border-border/70 bg-card">
+            {rows.map(({ club, matched }) => (
+              <li key={club.id} className="border-b border-border/70 last:border-b-0">
+                <Link
+                  to={`/club/${club.id}`}
+                  className="group flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-muted/50 sm:gap-4 sm:px-5"
+                >
+                  <img
+                    src={club.image_url || "/logo.svg"}
+                    alt=""
+                    className="size-14 shrink-0 rounded-xl bg-muted object-cover"
+                    loading="lazy"
+                  />
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="shrink-0 rounded-md bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+                        {club.division || club.club_type || "기타"}
+                      </span>
+                      <span className="min-w-0 truncate font-bold text-foreground transition-colors group-hover:text-primary">
+                        {club.name}
+                      </span>
+                    </div>
+                    <div className="flex min-w-0 flex-wrap gap-x-2 gap-y-0.5 text-xs font-semibold text-primary">
+                      {matched.slice(0, 3).map((tag) => <span key={tag}>#{tag}</span>)}
+                    </div>
+                  </div>
+                  <span className="hidden shrink-0 text-sm font-semibold tabular-nums text-muted-foreground sm:inline">
+                    {club.is_recruiting ? (club.recruit_end ? `~${club.recruit_end.slice(5).replace("-", ".")}` : "상시 모집") : "모집 마감"}
+                  </span>
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {/* 우측 컬럼: 내 관심 분야 */}
