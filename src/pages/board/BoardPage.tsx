@@ -43,7 +43,7 @@ export function BoardPage() {
       {/* 제목 옆에 탭별 설명, 오른쪽 끝에 글쓰기 (서비스/공지는 연합회·개발팀만 작성하므로 숨김) */}
       <div className="flex items-end justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-3">
-          <h1 className="shrink-0 text-2xl font-bold text-foreground">게시판</h1>
+          <h1 className="shrink-0 text-2xl font-bold text-foreground">{tab === "club" ? "동아리 게시판" : "게시판"}</h1>
           <p className="break-keep text-sm text-muted-foreground">{TAB_DESCRIPTIONS[tab]}</p>
         </div>
         {tab !== "notice" && <WriteButton onClick={goWrite} />}
