@@ -24,6 +24,8 @@ import {
   Link2,
   Download,
   Users,
+  MessageSquare,
+  Pencil,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -54,6 +56,8 @@ import {
 } from "@/lib/api";
 import { toastApiError } from "@/lib/api-error";
 import { CLUB_DIVISION_KEYS } from "@/data/clubDirectoryMeta";
+import { FEATURES } from "@/config/features";
+import { formatPostDate } from "@/lib/board";
 import { MemberManagement, type ClubRole } from "@/components/admin/MemberManagement";
 import { useNavigate } from "react-router-dom";
 
@@ -78,6 +82,8 @@ const ADMIN_MENU: {
     items: [
       { label: "동아리 정보", icon: PlusCircle, tab: "club-register" },
       { label: "회원관리", icon: Users, tab: "members" },
+      // 게시판 관리는 통합게시판과 같은 기능 플래그를 따른다.
+      ...(FEATURES.clubCommunity ? [{ label: "게시판 관리", icon: MessageSquare, tab: "community-board" as const }] : []),
     ],
   },
   {
@@ -320,6 +326,7 @@ export function AdminPage() {
    * 가려진다. 가려진 열이 있을 때만 좌우 이동 버튼을 띄운다.
    */
   const applicantsScroll = useHorizontalScroll<HTMLDivElement>();
+  const postsScroll = useHorizontalScroll<HTMLDivElement>();
 
   /** 신청서 엑셀 다운로드 — 항목 선택 다이얼로그 */
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
@@ -887,6 +894,16 @@ export function AdminPage() {
       toastApiError(error, "관리자 코멘트 저장에 실패했습니다.");
     }
   };
+
+  // 게시판 관리 탭을 열 때 해당 동아리 게시글을 불러온다.
+  useEffect(() => {
+    if (activeTab !== "community-board" || !selectedClubId) return;
+    let active = true;
+    api.getClubPosts(selectedClubId)
+      .then((posts) => { if (active) setCommunityPosts(posts); })
+      .catch((error) => toastApiError(error, "게시글을 불러오지 못했습니다."));
+    return () => { active = false; };
+  }, [activeTab, selectedClubId]);
 
   const createCommunityPost = async () => {
     if (!selectedClubId || !postTitle.trim() || !postContent.trim()) return;
@@ -1623,20 +1640,26 @@ export function AdminPage() {
             </h2>
             <Button onClick={() => setIsPostDialogOpen(true)} className="h-11 w-full rounded-xl bg-[#0F1B33] px-5 text-sm font-semibold text-white hover:bg-[#111f3b] sm:w-auto">
               <SquarePen className="mr-2 size-4" />
-              게시글 작성
+              공지 작성
             </Button>
           </div>
 
-          <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200">
-            <div className="overflow-x-auto">
+          <div className="relative mt-5 overflow-hidden rounded-2xl border border-slate-200">
+            {postsScroll.canScrollPrev && (
+              <ScrollArrowButton direction="prev" onClick={() => postsScroll.scroll("prev")} label="이전 항목 보기" className="absolute left-2 top-6 -translate-y-1/2" />
+            )}
+            {postsScroll.canScrollNext && (
+              <ScrollArrowButton direction="next" onClick={() => postsScroll.scroll("next")} label="다음 항목 보기" className="absolute right-2 top-6 -translate-y-1/2" />
+            )}
+            <div ref={postsScroll.ref} className="overflow-x-auto">
               <table className="min-w-[720px] w-full table-fixed">
               <thead className="bg-[#F8FAFD]">
                 <tr className="h-12 border-b border-slate-200 text-left text-sm font-semibold text-slate-500">
                   <th className="w-[72px] px-4">선택</th>
                   <th className="px-4">제목</th>
-                  <th className="w-[96px] px-4">작성자</th>
-                  <th className="w-[108px] px-4">작성일</th>
-                  <th className="w-[72px] px-4">댓글</th>
+                  <th className="w-[96px] px-4 text-center">작성자</th>
+                  <th className="w-[108px] px-4 text-center">작성일</th>
+                  <th className="w-[72px] px-4 text-center">댓글</th>
                   <th className="w-[88px] px-4 text-center">관리</th>
                 </tr>
               </thead>
@@ -1665,11 +1688,21 @@ export function AdminPage() {
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 text-sm text-slate-600">{post.author_name}</td>
-                    <td className="px-4 text-sm text-slate-500">{new Intl.DateTimeFormat("ko-KR").format(new Date(post.created_at))}</td>
-                    <td className="px-4 text-sm text-slate-500">{post.comment_count}</td>
+                    <td className="px-4 text-center text-sm text-slate-600">{post.author_name}</td>
+                    <td className="whitespace-nowrap px-4 text-center text-sm text-slate-500">{formatPostDate(post.created_at)}</td>
+                    <td className="px-4 text-center text-sm text-slate-500">{post.comment_count}</td>
                     <td className="px-4">
                       <div className="flex items-center justify-center gap-3 text-slate-400">
+                        {post.author_id === user?.id && (
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/board/club/${selectedClubId}/${post.id}/edit`)}
+                            className="transition-colors hover:text-slate-600"
+                            aria-label={`${post.title} 수정`}
+                          >
+                            <Pencil className="size-4" />
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => void deleteCommunityPosts([post.id])}
@@ -2196,7 +2229,7 @@ export function AdminPage() {
 
       <Dialog open={isPostDialogOpen} onOpenChange={setIsPostDialogOpen}>
         <DialogContent className="sm:max-w-lg">
-          <DialogHeader><DialogTitle>게시글 작성</DialogTitle><DialogDescription>관리자가 작성한 게시글은 공지로 등록됩니다.</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>공지 작성</DialogTitle><DialogDescription>관리자가 작성한 게시글은 공지로 등록됩니다.</DialogDescription></DialogHeader>
           <div className="flex flex-col gap-3">
             <Input value={postTitle} onChange={(event) => setPostTitle(event.target.value)} placeholder="제목을 입력해주세요." />
             <Textarea value={postContent} onChange={(event) => setPostContent(event.target.value)} placeholder="내용을 입력해주세요." className="min-h-40 resize-none" />
