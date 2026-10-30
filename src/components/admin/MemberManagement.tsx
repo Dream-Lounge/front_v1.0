@@ -194,13 +194,13 @@ export function MemberManagement({ clubId, myRole, currentUserId, onPresidentTra
       )}
 
       <Dialog open={pending !== null} onOpenChange={(open) => { if (!open && !isWorking) setPending(null); }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
+        <DialogContent className="gap-6 px-6 py-8 sm:max-w-md sm:px-8">
+          <DialogHeader className="gap-6">
             <DialogTitle>
               {pending?.type === "transfer" ? `${pending.member.name}님에게 회장을 위임할까요?` : `${pending?.member.name}님을 탈퇴시킬까요?`}
             </DialogTitle>
             <DialogDescription asChild>
-              <ul className="list-disc space-y-1 pl-4 text-left text-sm">
+              <ul className="list-disc space-y-2 pl-5 text-left text-sm leading-relaxed">
                 {pending?.type === "transfer" ? (
                   <>
                     <li>선택한 부원이 새 회장이 되고, 나는 일반 부원이 됩니다.</li>
