@@ -82,8 +82,8 @@ export function RecruitingSection() {
         />
       </div>
 
-      {/* 우측 컬럼: 분과별 모아보기 (타이틀 + 분과 목록) */}
-      <div className="flex flex-col gap-6">
+      {/* 우측 컬럼: 분과별 모아보기 (타이틀 + 분과 목록). 넓은 화면에서는 좌측 카드 높이에 맞춰 늘고 준다. */}
+      <div className="dream-recruiting-side flex flex-col gap-6">
         {/* 섹션 헤더 */}
         <div className="flex items-center">
           <h2 className="text-2xl font-extrabold text-gray-900 sm:text-3xl">
@@ -92,7 +92,7 @@ export function RecruitingSection() {
         </div>
 
         {/* 분과 목록 */}
-        <aside className="dream-divisions flex w-full shrink-0 flex-col lg:w-96">
+        <aside className="dream-divisions flex w-full shrink-0 flex-col">
           {(loading || failed || divisions.length === 0) && <p className="py-6 text-sm text-muted-foreground" role="status">{loading ? "분과 정보를 불러오는 중입니다." : failed ? "분과 정보를 불러오지 못했습니다." : "등록된 분과가 없습니다."}</p>}
           {divisions.map((division) => (
             <button

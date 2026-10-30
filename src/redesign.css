@@ -70,18 +70,21 @@ button:disabled { cursor: not-allowed; }
 /* 위아래 여백을 같게 두어야 카드 하단이 우측 분과 목록과 정확히 맞는다. */
 .dream-club-track { padding: 4px 2px; gap: 16px; scroll-snap-type: x mandatory; }
 .dream-recruiting .dream-club-card { width: 216px; height: 276px; border-radius: 20px; scroll-snap-align: start; box-shadow: none; }
-/* 768px 이상: '모집중인 동아리'와 'AI 추천 동아리'가 같은 크기의 카드를 한 줄에 정확히 3장씩 보여 준다.
-   카드 폭은 더 좁은 쪽(패널 안쪽 여백 32px×2가 있는 AI 추천)의 줄에 3장이 딱 맞도록 홈 너비(cqw)로 계산하고,
-   두 줄 모두 3장 너비로 제한해 남는 폭은 여백으로 둔다.
-   - 한 칸 배치: 홈 너비 - 패널 여백 64 - 줄 안쪽 여백 4 - 카드 간격 32
+/* 768px 이상: '모집중인 동아리' 카드를 한 줄에 정확히 3장씩, 칸 폭에 꽉 차게 보여 준다.
+   - 한 칸 배치: 홈 너비 - 줄 안쪽 여백 4 - 카드 간격 32
    - 두 칸 배치(1024px~): 위에서 우측 컬럼 292와 컬럼 간격 36을 더 뺀다 */
 @media(min-width:768px) {
- .dream-recruiting { --dream-card-w: calc((100cqw - 100px) / 3); }
+ .dream-recruiting { --dream-card-w: calc((100cqw - 36px) / 3); }
  .dream-recruiting .dream-club-card { width: var(--dream-card-w); height: auto; aspect-ratio: 3 / 4; }
  .dream-recruiting .dream-club-rail { width: 100%; max-width: calc(var(--dream-card-w) * 3 + 36px); }
 }
 @media(min-width:1024px) {
- .dream-recruiting { --dream-card-w: calc((100cqw - 428px) / 3); }
+ .dream-recruiting { --dream-card-w: calc((100cqw - 364px) / 3); }
+ /* 분과 목록이 카드 높이를 따라가도록: 우측 컬럼은 행 높이를 정하지 않고(contain: size) 좌측에 맞춰 늘어나며,
+    목록의 위아래를 카드의 위아래(줄 안쪽 여백 4px)와 맞추고 남는 높이는 각 줄에 똑같이 나눈다. */
+ .dream-recruiting-side { contain: size; }
+ .dream-recruiting-side .dream-divisions { flex: 1; min-height: 0; margin-block: 4px; }
+ .dream-recruiting-side .dream-divisions button { flex: 1 1 0; min-height: 0; padding-block: 0; }
 }
 /* 포스터 이미지 위에 얹히는 분과 뱃지 — 기본 뱃지(12px)로는 작아서 키운다. */
 .dream-club-card [data-slot="badge"] { font-size: .8125rem; padding: 4px 11px; }
