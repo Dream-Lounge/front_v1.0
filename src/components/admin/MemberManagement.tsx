@@ -44,9 +44,9 @@ interface MemberManagementProps {
 
 /**
  * 회원관리: 부원 목록과 권한 관리
- * - 회장: 관리자 지정, 회장 위임, 탈퇴 처리
- * - 관리자: 탈퇴 처리 (관리자 지정·회장 위임 불가)
- * - 회장은 탈퇴 처리 대상이 아니며, 먼저 회장 권한을 위임해야 한다.
+ * - 회장: 관리자 지정, 회장 위임, 부원 탈퇴
+ * - 관리자: 부원 탈퇴 (관리자 지정·회장 위임 불가)
+ * - 회장은 탈퇴 대상이 아니며, 먼저 회장 권한을 위임해야 한다.
  */
 export function MemberManagement({ clubId, myRole, currentUserId, onPresidentTransferred }: MemberManagementProps) {
   const [members, setMembers] = useState<ClubMember[] | null>(null);
@@ -87,11 +87,11 @@ export function MemberManagement({ clubId, myRole, currentUserId, onPresidentTra
         return;
       }
       await api.withdrawClubMember(clubId, pending.member.user_id);
-      toast.success(`${pending.member.name}님을 탈퇴 처리했습니다.`);
+      toast.success(`${pending.member.name}님을 탈퇴시켰습니다.`);
       setPending(null);
       await load();
     } catch (error) {
-      toastApiError(error, pending.type === "transfer" ? "회장 권한을 위임하지 못했습니다." : "탈퇴 처리하지 못했습니다.");
+      toastApiError(error, pending.type === "transfer" ? "회장 권한을 위임하지 못했습니다." : "탈퇴시키지 못했습니다.");
     } finally {
       setIsWorking(false);
     }
@@ -105,8 +105,8 @@ export function MemberManagement({ clubId, myRole, currentUserId, onPresidentTra
       </div>
 
       <ul className="mt-4 space-y-1 text-xs leading-relaxed text-muted-foreground">
-        <li><strong className="text-foreground">회장</strong>: 모든 관리 기능, 관리자 지정, 회장 위임, 탈퇴 처리</li>
-        <li><strong className="text-foreground">관리자</strong>: 동아리 정보·신청폼·신청서·회원·공지 관리, 탈퇴 처리</li>
+        <li><strong className="text-foreground">회장</strong>: 모든 관리 기능, 관리자 지정, 회장 위임, 부원 탈퇴</li>
+        <li><strong className="text-foreground">관리자</strong>: 동아리 정보·신청폼·신청서·회원·공지 관리, 부원 탈퇴</li>
         <li><strong className="text-foreground">부원</strong>: 동아리 게시판 이용</li>
       </ul>
 
@@ -171,7 +171,7 @@ export function MemberManagement({ clubId, myRole, currentUserId, onPresidentTra
                         onClick={() => setPending({ type: "withdraw", member })}
                       >
                         <UserMinus className="size-4" aria-hidden />
-                        탈퇴 처리
+                        탈퇴
                       </Button>
                     </div>
                   )}
@@ -197,7 +197,7 @@ export function MemberManagement({ clubId, myRole, currentUserId, onPresidentTra
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {pending?.type === "transfer" ? `${pending.member.name}님에게 회장을 위임할까요?` : `${pending?.member.name}님을 탈퇴 처리할까요?`}
+              {pending?.type === "transfer" ? `${pending.member.name}님에게 회장을 위임할까요?` : `${pending?.member.name}님을 탈퇴시킬까요?`}
             </DialogTitle>
             <DialogDescription asChild>
               <ul className="list-disc space-y-1 pl-4 text-left text-sm">
@@ -226,7 +226,7 @@ export function MemberManagement({ clubId, myRole, currentUserId, onPresidentTra
               className={cn(pending?.type === "withdraw" && "bg-destructive text-white hover:bg-destructive/90")}
             >
               {isWorking && <Loader2 className="size-4 animate-spin" aria-hidden />}
-              {pending?.type === "transfer" ? "회장 위임" : "탈퇴 처리"}
+              {pending?.type === "transfer" ? "회장 위임" : "탈퇴"}
             </Button>
           </DialogFooter>
         </DialogContent>
