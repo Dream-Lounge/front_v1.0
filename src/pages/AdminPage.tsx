@@ -222,6 +222,9 @@ export function AdminPage() {
   const [newContactValue, setNewContactValue] = useState("");
   const [clubImageUrl, setClubImageUrl] = useState("");
   const [clubIsRecruiting, setClubIsRecruiting] = useState(false);
+  // 모집 기간 (input[type=date] 값 그대로 "YYYY-MM-DD")
+  const [clubRecruitStart, setClubRecruitStart] = useState("");
+  const [clubRecruitEnd, setClubRecruitEnd] = useState("");
   const [formExists, setFormExists] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
@@ -374,6 +377,8 @@ export function AdminPage() {
         setClubDetailDescription(club.description ?? "");
         setClubImageUrl(club.image_url ?? "");
         setClubIsRecruiting(club.is_recruiting);
+        setClubRecruitStart(club.recruit_start?.slice(0, 10) ?? "");
+        setClubRecruitEnd(club.recruit_end?.slice(0, 10) ?? "");
         const savedContactLinks = club.contact_links?.length
           ? club.contact_links
           : [
@@ -670,6 +675,14 @@ export function AdminPage() {
       toast.error("분과를 선택해주세요.");
       return;
     }
+    if (Boolean(clubRecruitStart) !== Boolean(clubRecruitEnd)) {
+      toast.error("모집 시작일과 마감일을 모두 입력해주세요.");
+      return;
+    }
+    if (clubRecruitStart && clubRecruitEnd && clubRecruitEnd < clubRecruitStart) {
+      toast.error("모집 마감일은 시작일과 같거나 이후여야 합니다.");
+      return;
+    }
     const normalizedContactLinks = contactLinks.map(({ label, value }) => ({
       type: detectContactType(value),
       label: label.trim(),
@@ -699,6 +712,8 @@ export function AdminPage() {
           caption: photo.caption.trim() || null,
         })),
         is_recruiting: clubIsRecruiting,
+        recruit_start: clubRecruitStart || null,
+        recruit_end: clubRecruitEnd || null,
         tags: tags.map((tag) => ({
           tag_key: "custom",
           tag_value: tag.replace(/^#/, "").trim(),
@@ -1050,6 +1065,51 @@ export function AdminPage() {
                     </button>
                   </div>
                 ))}
+              </div>
+            </section>
+
+            <section className="mt-5">
+              <div className="flex items-center gap-1.5">
+                <h3 id="club-recruit-period-label" className="text-base font-bold text-slate-800">
+                  모집 기간
+                </h3>
+                {/* 마우스를 올리거나 키보드로 포커스하면 안내 말풍선을 보여 준다. */}
+                <span className="group relative inline-flex">
+                  <button
+                    type="button"
+                    aria-label="모집 기간 안내"
+                    aria-describedby="club-recruit-period-tip"
+                    className="inline-flex size-5 items-center justify-center rounded-full text-slate-400 transition-colors hover:text-slate-600 focus-visible:text-slate-600"
+                  >
+                    <Info className="size-4" aria-hidden />
+                  </button>
+                  <span
+                    id="club-recruit-period-tip"
+                    role="tooltip"
+                    className="pointer-events-none absolute top-1/2 left-full z-20 ml-2 w-max max-w-[220px] -translate-y-1/2 break-keep rounded-md bg-slate-900 px-3 py-2 text-xs leading-relaxed text-white opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+                  >
+                    미설정 시 동아리 상세 페이지에 &lsquo;상시&nbsp;모집&rsquo;으로 표시됩니다.
+                  </span>
+                </span>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2" role="group" aria-labelledby="club-recruit-period-label">
+                <Input
+                  type="date"
+                  aria-label="모집 시작일"
+                  value={clubRecruitStart}
+                  max={clubRecruitEnd || undefined}
+                  onChange={(event) => setClubRecruitStart(event.target.value)}
+                  className="h-10 w-full bg-white sm:w-44"
+                />
+                <span className="hidden text-slate-400 sm:inline" aria-hidden>~</span>
+                <Input
+                  type="date"
+                  aria-label="모집 마감일"
+                  value={clubRecruitEnd}
+                  min={clubRecruitStart || undefined}
+                  onChange={(event) => setClubRecruitEnd(event.target.value)}
+                  className="h-10 w-full bg-white sm:w-44"
+                />
               </div>
             </section>
 
