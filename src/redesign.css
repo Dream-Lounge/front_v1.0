@@ -121,7 +121,6 @@ button:disabled { cursor: not-allowed; }
 .dream-footer .border-stone-800 { border-color: #e0e4e8; }
 .dream-footer .h-10 { height: auto; }
 .dream-footer p { font-size: .875rem; }
-@media(min-width:1440px) { .dream-footer>div { max-width: 1320px; } }
 /* 1023px 이하에서는 로고·검색·메뉴가 한 줄에 다 들어가지 않아 메뉴가 잘리므로, 메뉴를 둘째 줄로 내린다. */
 @media(max-width:1023px) {
  .dream-header-inner { display: grid; grid-template-columns: minmax(0,1fr) auto; padding-top: 10px; padding-bottom: 0; gap: 4px 12px; }
