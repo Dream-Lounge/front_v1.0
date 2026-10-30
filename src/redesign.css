@@ -150,6 +150,10 @@ button:disabled { cursor: not-allowed; }
  .dream-divisions button>span:last-child { font-size: .875rem; }
  .dream-footer>div { padding-top: 32px; }
 }
+/* 아주 좁은 화면(375px 미만)에서 헤더 메뉴 4개가 한 줄에 들어가도록 글자와 좌우 여백을 줄인다. */
+@media(max-width:374px) {
+ .dream-nav a { font-size: .8125rem; padding: 8px 4px; }
+}
 @media(prefers-reduced-motion:reduce) {
  *,*::before,*::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
