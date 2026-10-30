@@ -319,6 +319,7 @@ export function AdminPage() {
   const [applicantTotal, setApplicantTotal] = useState(0);
   const [applicantTotalPages, setApplicantTotalPages] = useState(1);
   const [selectedApplication, setSelectedApplication] = useState<AdminApplicationDetail | null>(null);
+  const [isDeleteApplicationOpen, setIsDeleteApplicationOpen] = useState(false);
   const [reviewComment, setReviewComment] = useState("");
 
   /**
@@ -2309,7 +2310,44 @@ export function AdminPage() {
               </div>
             </section>
           </div>
-          <DialogFooter><Button onClick={() => setSelectedApplication(null)}>닫기</Button></DialogFooter>
+          <DialogFooter className="sm:justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              className="text-destructive hover:text-destructive"
+              onClick={() => setIsDeleteApplicationOpen(true)}
+            >
+              <Trash2 className="size-4" aria-hidden />
+              신청서 삭제
+            </Button>
+            <Button onClick={() => setSelectedApplication(null)}>닫기</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 신청서 삭제 확인 */}
+      <Dialog open={isDeleteApplicationOpen} onOpenChange={setIsDeleteApplicationOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>신청서를 삭제할까요?</DialogTitle>
+            <DialogDescription>
+              {selectedApplication?.user_name}님의 신청서가 목록에서 사라지며 되돌릴 수 없습니다.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsDeleteApplicationOpen(false)}>취소</Button>
+            <Button
+              type="button"
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={() => {
+                // TODO: 관리자용 신청서 삭제 API가 준비되면 연결
+                toast.info("신청서 삭제는 아직 준비 중인 기능입니다.");
+                setIsDeleteApplicationOpen(false);
+              }}
+            >
+              삭제
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
