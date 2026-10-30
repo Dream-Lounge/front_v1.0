@@ -21,7 +21,7 @@ button:disabled { cursor: not-allowed; }
 .dream-header-inner { min-height: 88px; gap: 24px; }
 .dream-brand { height: 52px; }
 .dream-nav { justify-content: center; }
-.dream-nav a { font-size: .9375rem; font-weight: 600; border: 0; border-radius: 8px; }
+.dream-nav a { font-size: .9375rem; font-weight: 600; border: 0; border-radius: 16px; }
 .dream-nav a[aria-current="page"] { color: var(--primary); background: var(--accent); }
 .dream-user { color: var(--primary); background: #edf4fc; border: 1px solid #dae9fa; width: 42px; height: 42px; }
 .dream-header input { height: 38px; background: #fff; border-radius: 10px; box-shadow: none; }
