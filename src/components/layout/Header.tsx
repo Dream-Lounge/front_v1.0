@@ -9,10 +9,12 @@ import {
 } from "@/components/ui/popover";
 import { useAuth } from "@/hooks/useAuth";
 import { Separator } from "@/components/ui/separator";
+import { FEATURES } from "@/config/features";
 
 
 const NAV_ITEMS = [
     { label: "동아리 찾기", to: "/clubs" },
+    ...(FEATURES.clubCommunity ? [{ label: "게시판", to: "/board" }] : []),
     { label: "Dream Lounge", to: "/about" },
     { label: "문의하기", to: "/support" },
 ];
