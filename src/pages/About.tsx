@@ -70,7 +70,7 @@ export function About() {
             Dream Lounge
           </span>
           <h1 className="break-keep text-2xl font-extrabold leading-snug text-foreground sm:text-[28px]">
-            우리, 어느 동아리에서 만나게 될까요,,?
+            우리, 어느 동아리에서 만나게 될까요?
           </h1>
           <div className="flex flex-col gap-2">
             <p className="break-keep text-base font-bold leading-snug text-foreground sm:text-lg">
