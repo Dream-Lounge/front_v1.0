@@ -9,6 +9,10 @@
   --accent: #edf4fc; --accent-foreground: #155ba1;
   --border: #e5e7e9; --input: #dfe2e6; --ring: #0875e1; --radius: 1rem;
 }
+/* 스크롤바 자리를 항상 비워 두어, 페이지·탭마다 내용 길이가 달라도 가운데 정렬된 화면이 좌우로 흔들리지 않게 한다. */
+html { scrollbar-gutter: stable; }
+/* 팝업이 열릴 때 스크롤 잠금 라이브러리가 스크롤바 폭만큼 여백을 더하는데, 위에서 자리를 이미 비워 두었으므로 이중 보정을 끈다. */
+html body[data-scroll-locked] { margin-right: 0 !important; }
 body { margin: 0; -webkit-font-smoothing: antialiased; }
 ::selection { background: #d6eaff; color: #084684; }
 h1,h2,h3 { text-wrap: balance; word-break: keep-all; }
