@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel, FieldGroup } from "@/components/ui/field";
-import { LogIn, Eye, EyeOff, Loader2, UserRound } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { validators, ERROR_MESSAGES } from "@/lib/validators";
 import { useAuth } from "@/hooks/useAuth";
@@ -208,11 +208,7 @@ export function Login() {
                 className="w-full py-6 text-base font-bold shadow-lg hover:shadow-xl transition-all mt-6"
                 disabled={isLoading}
               >
-                {isLoading ? (
-                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                ) : (
-                  <LogIn className="h-5 w-5 mr-2" />
-                )}
+                {isLoading && <Loader2 className="h-5 w-5 animate-spin" />}
                 {isLoading ? "로그인 중..." : "로그인"}
               </Button>
 
@@ -241,7 +237,6 @@ export function Login() {
                   className="w-full py-6 text-base font-semibold"
                   onClick={continueAsGuest}
                 >
-                  <UserRound className="mr-2 h-5 w-5" />
                   {applyPath ? "비회원으로 지원하기" : "비회원으로 둘러보기"}
                 </Button>
                 {applyPath && (
