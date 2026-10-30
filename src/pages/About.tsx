@@ -69,14 +69,14 @@ export function About() {
           <span className="text-sm font-bold tracking-wide text-primary">
             Dream Lounge
           </span>
-          <h1 className="break-keep text-2xl font-extrabold leading-snug text-foreground sm:text-4xl">
+          <h1 className="break-keep text-2xl font-extrabold leading-snug text-foreground sm:text-[28px]">
             우리, 어느 동아리에서 만나게 될까요,,?
           </h1>
           <div className="flex flex-col gap-2">
-            <p className="break-keep text-lg font-bold leading-snug text-foreground sm:text-xl">
+            <p className="break-keep text-base font-bold leading-snug text-foreground sm:text-lg">
               새로운 사람과 경험을 만나는 가장 쉬운 방법
             </p>
-            <p className="break-keep text-base leading-relaxed text-muted-foreground sm:text-lg">
+            <p className="break-keep text-[15px] leading-relaxed text-muted-foreground sm:text-base">
               Dream Lounge에서 다양한 동아리를 둘러보고, 마음에 드는 동아리에
               간편하게 지원해보세요
             </p>
