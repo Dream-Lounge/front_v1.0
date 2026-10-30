@@ -11,7 +11,7 @@ import { ClubCardRail, type PosterClub } from "@/components/home/ClubCardRail";
 /**
  * AI 추천 동아리 섹션 (모집중인 동아리 섹션과 같은 구성)
  * - 좌측: 관심 분야와 겹치는 동아리를 가로 스크롤 한 줄로 표시합니다.
- * - 우측: 내가 고른 관심 분야 목록. 누르면 그 분야로 좁혀 보고, 다시 누르면 해제합니다.
+ * - 우측: 내가 고른 관심 분야를 칩으로 보여 줍니다. 누르면 그 분야로 좁혀 보고, 다시 누르면 해제합니다.
  */
 export function RecommendedSection() {
   const navigate = useNavigate();
@@ -41,11 +41,6 @@ export function RecommendedSection() {
   }, [attempt]);
 
   const recommended = useMemo(() => recommendClubs(clubs, interests), [clubs, interests]);
-  const countByInterest = useMemo(() => {
-    const counts = new Map<string, number>();
-    recommended.forEach(({ matched }) => matched.forEach((tag) => counts.set(tag, (counts.get(tag) ?? 0) + 1)));
-    return counts;
-  }, [recommended]);
 
   const posters: PosterClub[] = recommended
     .filter(({ matched }) => !focused || matched.includes(focused))
@@ -123,7 +118,7 @@ export function RecommendedSection() {
               수정
             </button>
           </div>
-          <aside className="dream-divisions flex w-full shrink-0 flex-col lg:w-96">
+          <div className="flex flex-wrap gap-2" role="group" aria-label="내 관심 분야">
             {interests.map((interest) => {
               const isFocused = focused === interest;
               return (
@@ -133,19 +128,18 @@ export function RecommendedSection() {
                   aria-pressed={isFocused}
                   onClick={() => setFocused(isFocused ? null : interest)}
                   className={cn(
-                    "group flex items-center justify-between border-b border-gray-100 py-4 text-left transition-colors hover:bg-gray-50/60",
-                    isFocused && "bg-accent/60",
+                    "inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition-colors",
+                    isFocused
+                      ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                      : "border-border bg-card text-foreground shadow-xs hover:bg-muted/60",
                   )}
                 >
-                  <span className={cn("flex items-center gap-1.5 font-bold text-gray-800 group-hover:text-gray-900", isFocused && "text-primary")}>
-                    {isFocused && <Check className="size-4" aria-hidden />}
-                    {interest}
-                  </span>
-                  <span className="text-sm text-gray-400">{countByInterest.get(interest) ?? 0}개 동아리</span>
+                  {isFocused && <Check className="size-4" aria-hidden />}
+                  {interest}
                 </button>
               );
             })}
-          </aside>
+          </div>
         </div>
       )}
     </div>
