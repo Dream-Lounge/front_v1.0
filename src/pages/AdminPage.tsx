@@ -23,6 +23,7 @@ import {
   Phone,
   Link2,
   Download,
+  Users,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -53,13 +54,16 @@ import {
 } from "@/lib/api";
 import { toastApiError } from "@/lib/api-error";
 import { CLUB_DIVISION_KEYS } from "@/data/clubDirectoryMeta";
+import { MemberManagement, type ClubRole } from "@/components/admin/MemberManagement";
+import { useNavigate } from "react-router-dom";
 
 type AdminTab =
   | "club-register"
   | "application-form"
   | "submitted-applications"
   | "page-tags"
-  | "community-board";
+  | "community-board"
+  | "members";
 
 const ADMIN_MENU: {
   section: string;
@@ -73,6 +77,7 @@ const ADMIN_MENU: {
     section: "동아리 관리",
     items: [
       { label: "동아리 정보", icon: PlusCircle, tab: "club-register" },
+      { label: "회원관리", icon: Users, tab: "members" },
     ],
   },
   {
@@ -212,7 +217,8 @@ function contactHref(link: ClubContactLink): string {
 }
 
 export function AdminPage() {
-  const { managedClubs } = useAuth();
+  const { managedClubs, user, refreshManagedClubs } = useAuth();
+  const navigate = useNavigate();
   const [selectedClubId, setSelectedClubId] = useState(managedClubs[0]?.club_id ?? "");
   const [activeTab, setActiveTab] = useState<AdminTab>("club-register");
   const [clubName, setClubName] = useState("");
@@ -1698,6 +1704,30 @@ export function AdminPage() {
             </div>
           </div>
         </Card>
+      );
+    }
+
+    if (activeTab === "members") {
+      if (!selectedClubId) {
+        return (
+          <Card className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+            <h2 className="text-2xl font-bold text-foreground">회원관리</h2>
+            <p className="mt-3 text-sm text-muted-foreground">동아리 정보를 먼저 등록하면 부원을 관리할 수 있어요.</p>
+          </Card>
+        );
+      }
+      const myRole: ClubRole = managedClubs.find((club) => club.club_id === selectedClubId)?.role === "admin" ? "admin" : "president";
+      return (
+        <MemberManagement
+          key={selectedClubId}
+          clubId={selectedClubId}
+          myRole={myRole}
+          currentUserId={user?.id}
+          onPresidentTransferred={() => {
+            // 회장을 넘기면 이 동아리의 관리자 권한이 사라지므로 홈으로 보낸다.
+            void refreshManagedClubs().then(() => navigate("/", { replace: true }));
+          }}
+        />
       );
     }
 
