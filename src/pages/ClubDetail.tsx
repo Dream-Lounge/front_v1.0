@@ -35,7 +35,7 @@ export function ClubDetail() {
   const isOwnClub = managedClubs.some((club) => club.club_id === id && club.role === "president");
 
   return (
-    <div className="container mx-auto flex w-full max-w-5xl flex-col gap-8 pb-20">
+    <div className="mx-auto flex w-full flex-col gap-8 pb-20">
       <div className="grid grid-cols-1 items-start gap-8 md:grid-cols-[minmax(280px,460px)_minmax(0,1fr)]">
         <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl bg-muted shadow-sm">
           {clubData.coverImage ? (

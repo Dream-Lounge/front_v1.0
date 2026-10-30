@@ -47,7 +47,7 @@ export function AccountPage() {
     : "profile";
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+    <div className="mx-auto flex w-full flex-col gap-6">
       <h2 className="text-xl font-bold text-foreground sm:text-2xl">계정 관리</h2>
 
       {/* 세 칸이 폭을 나눠 가져 좁은 화면에서도 잘리지 않는다. */}

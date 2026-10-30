@@ -111,7 +111,7 @@ export function BoardWrite() {
   // 서비스/공지는 연합회·개발팀만 작성한다.
   if (tab === "notice") {
     return (
-      <div className="mx-auto w-full max-w-3xl">
+      <div className="mx-auto w-full">
         <div className="dream-data-state" role="status">
           <p>서비스/공지는 동아리 연합회와 개발팀만 작성할 수 있어요.</p>
           <button type="button" onClick={() => navigate(boardListPath("notice"))}>목록으로</button>
@@ -122,7 +122,7 @@ export function BoardWrite() {
 
   if (tab === "club" && clubs !== null && clubs.length === 0) {
     return (
-      <div className="mx-auto w-full max-w-3xl">
+      <div className="mx-auto w-full">
         <div className="dream-data-state" role="status">
           <p>가입한 동아리가 없어 동아리 게시판에 글을 쓸 수 없어요.</p>
           <button type="button" onClick={() => navigate(boardListPath("club"))}>목록으로</button>
@@ -136,7 +136,7 @@ export function BoardWrite() {
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-16">
+    <form onSubmit={handleSubmit} noValidate className="mx-auto flex w-full flex-col gap-6 pb-16">
       <div className="flex flex-col gap-1">
         <p className="text-sm font-semibold text-primary">{tabLabel}</p>
         <h1 className="text-2xl font-bold text-foreground">{isEdit ? "글 수정" : "글쓰기"}</h1>

@@ -62,7 +62,7 @@ const FEATURE_CARDS = ALL_FEATURE_CARDS.filter((feature) => feature.show);
  */
 export function About() {
   return (
-    <div className="mx-auto w-full max-w-4xl pb-16 sm:pb-20">
+    <div className="mx-auto w-full pb-16 sm:pb-20">
       <div className="flex flex-col gap-12 sm:gap-16">
         {/* 페이지 헤더 */}
         <header className="flex flex-col gap-4">

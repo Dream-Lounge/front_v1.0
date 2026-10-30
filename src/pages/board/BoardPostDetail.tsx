@@ -60,7 +60,7 @@ export function BoardPostDetail() {
   // 동아리 게시판은 해당 동아리 정식 부원만 볼 수 있다.
   if (!user || membership === null) {
     return (
-      <div className="mx-auto w-full max-w-3xl">
+      <div className="mx-auto w-full">
         <div className="dream-data-state" role="status">
           <p>{!user ? "동아리 게시판은 로그인한 동아리 부원만 이용할 수 있어요." : "이 동아리의 부원만 볼 수 있는 글이에요."}</p>
           <button type="button" onClick={() => navigate(!user ? "/login" : boardListPath("club"))}>
@@ -77,7 +77,7 @@ export function BoardPostDetail() {
 
   if (post === null) {
     return (
-      <div className="mx-auto w-full max-w-3xl">
+      <div className="mx-auto w-full">
         <div className="dream-data-state" role="status">
           <p>글을 찾을 수 없습니다. 삭제되었을 수 있어요.</p>
           <button type="button" onClick={() => navigate(listPath)}>목록으로</button>
@@ -126,7 +126,7 @@ export function BoardPostDetail() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-16">
+    <div className="mx-auto flex w-full flex-col gap-6 pb-16">
       <Link to={listPath} className="inline-flex w-fit items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-4" aria-hidden />
         {membership.club_name} 게시판

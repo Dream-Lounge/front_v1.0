@@ -78,7 +78,7 @@ export function InterestSelection() {
   const remaining = Math.max(MIN_INTERESTS - count, 0);
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col py-4 sm:py-8">
+    <div className="mx-auto flex w-full flex-col py-4 sm:py-8">
       <h1 className="text-2xl font-bold text-foreground sm:text-3xl">어떤 분야에 관심있으신가요?</h1>
       <p className="mt-2 text-sm text-muted-foreground sm:text-base">
         관심 분야를 알려주시면 나에게 맞는 동아리를 찾는 데 활용할게요.

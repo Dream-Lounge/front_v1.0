@@ -43,14 +43,14 @@ export function MyClubs() {
 
   if (isLoading) {
     return (
-      <div className="max-w-6xl mx-auto flex items-center justify-center py-20">
+      <div className="w-full mx-auto flex items-center justify-center py-20">
         <div className="text-muted-foreground">로딩 중...</div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto flex flex-col gap-8">
+    <div className="w-full mx-auto flex flex-col gap-8">
       <div className="flex flex-col gap-3">
         <h2 className="text-2xl sm:text-3xl font-bold text-foreground">내 동아리</h2>
         <Separator />

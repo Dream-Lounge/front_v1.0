@@ -193,14 +193,14 @@ export function ApplicationStatus() {
 
   if (isLoading) {
     return (
-      <div className="max-w-6xl mx-auto flex items-center justify-center py-20">
+      <div className="w-full mx-auto flex items-center justify-center py-20">
         <div className="text-muted-foreground">로딩 중...</div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto flex flex-col gap-8">
+    <div className="w-full mx-auto flex flex-col gap-8">
       <h2 className="text-xl sm:text-2xl font-bold text-foreground">지원 내역</h2>
       {/* 다섯 칸이 화면 폭을 똑같이 나눠 가져, 좁은 화면에서도 가려지는 항목이 없다. */}
       <div className="grid grid-cols-5 divide-x divide-border rounded-2xl border bg-card shadow-sm">

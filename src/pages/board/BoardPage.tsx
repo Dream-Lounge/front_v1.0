@@ -39,7 +39,7 @@ export function BoardPage() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 pb-16">
+    <div className="mx-auto flex w-full flex-col gap-6 pb-16">
       {/* 제목 옆에 탭별 설명, 오른쪽 끝에 글쓰기 (서비스/공지는 연합회·개발팀만 작성하므로 숨김) */}
       <div className="flex items-end justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-3">

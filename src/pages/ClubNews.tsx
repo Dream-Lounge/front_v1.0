@@ -32,7 +32,7 @@ export function ClubNews() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-7xl pb-16 sm:pb-20">
+    <div className="mx-auto w-full pb-16 sm:pb-20">
       <div className="flex flex-col gap-6 sm:gap-8">
         {/* 페이지 헤더 */}
         <h1 className="text-2xl font-extrabold text-foreground sm:text-3xl">

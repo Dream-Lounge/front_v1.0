@@ -293,7 +293,7 @@ export function ClubApplication() {
   const isReadOnly = mode === "view";
   return (
     <div className="min-h-screen">
-      <div className="container mx-auto max-w-4xl px-4">
+      <div className="mx-auto w-full">
         <Button variant="outline" onClick={() => navigate(-1)} className="mb-6 gap-2 text-muted-foreground">
           <ArrowLeft className="size-4" /> 이전 화면으로 돌아가기
         </Button>
