@@ -1358,11 +1358,11 @@ export function AdminPage() {
               <table className="min-w-[760px] w-full table-fixed">
               <thead className="bg-[#F8FAFD]">
                 <tr className="h-12 text-left text-sm font-semibold text-slate-500">
-                  <th className="w-[72px] px-4">NO.</th>
+                  <th className="w-[72px] px-4 text-center">NO.</th>
                   <th className="w-[160px] px-4">이름 / 학번</th>
-                  <th className="w-[160px] px-4">학과</th>
-                  <th className="w-[130px] px-4">지원일시</th>
-                  <th className="w-[120px] px-4">상태</th>
+                  <th className="w-[160px] px-4 text-center">학과</th>
+                  <th className="w-[130px] px-4 text-center">지원일시</th>
+                  <th className="w-[120px] px-4 text-center">상태</th>
                   <th className="w-[130px] px-4 text-center">상세보기</th>
                 </tr>
               </thead>
@@ -1373,7 +1373,7 @@ export function AdminPage() {
                       key={applicant.id}
                       className="h-[88px] border-t border-slate-100 text-sm text-slate-700 first:border-t-0"
                     >
-                      <td className="px-4 text-sm font-semibold text-slate-600">
+                      <td className="px-4 text-center text-sm font-semibold text-slate-600">
                         {(safeApplicantPage - 1) * APPLICANTS_PER_PAGE + index + 1}
                       </td>
                       <td className="px-4">
@@ -1384,13 +1384,13 @@ export function AdminPage() {
                           {applicant.studentId}
                         </div>
                       </td>
-                      <td className="px-4 text-sm font-semibold text-slate-700">
+                      <td className="px-4 text-center text-sm font-semibold text-slate-700">
                         {applicant.major}
                       </td>
-                      <td className="px-4 text-sm font-semibold text-slate-500">
+                      <td className="whitespace-nowrap px-4 text-center text-sm font-semibold text-slate-500">
                         {applicant.submittedAt}
                       </td>
-                      <td className="px-4">
+                      <td className="px-4 text-center">
                         <div className="relative inline-flex">
                           <select
                             value={applicant.status}
