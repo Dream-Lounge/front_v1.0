@@ -1,5 +1,6 @@
 export const API_BASE_URL = import.meta.env.VITE_API_URL;
 const API_TIMEOUT_MS = 30_000;
+const PRIVACY_POLICY_VERSION = "2026-10-21";
 
 if (!API_BASE_URL) {
   throw new Error("VITE_API_URL is not defined. Please set it in your environment variables.");
@@ -17,6 +18,11 @@ export interface User {
   name: string;
   department: string | null;
   phone: string | null;
+  email: string;
+  emailVerified: boolean;
+  onboardingCompleted: boolean;
+  guideHiddenUntil: string | null;
+  platformRoles: string[];
   isClubAdmin: boolean;
 }
 
@@ -26,7 +32,22 @@ interface ApiUser {
   name: string;
   department: string | null;
   phone: string | null;
+  email: string;
+  email_verified: boolean;
+  onboarding_completed: boolean;
+  guide_hidden_until: string | null;
+  platform_roles: string[];
   is_club_admin: boolean;
+}
+
+export interface UserInterest {
+  tag_key: string;
+  tag_value: string;
+}
+
+export interface UserInterestsResponse {
+  interests: UserInterest[];
+  onboarding_completed: boolean;
 }
 
 export interface LoginResponse {
@@ -54,7 +75,14 @@ export interface PageResponse<T> {
 export interface SignupRequest {
   studentId: string;
   name: string;
+  department: string;
+  phone: string;
+  email: string;
   password: string;
+  privacyConsentRequired: boolean;
+  privacyConsentOptional: boolean;
+  linkGuestApplications: boolean;
+  emailVerificationToken: string;
 }
 
 export interface SignupResponse {
@@ -162,6 +190,8 @@ export interface ApplicantInfoInput {
   applicant_grade: string;
 }
 
+export type GuestApplicantInfoInput = ApplicantInfoInput;
+
 export interface ActiveClubItem {
   club_id: string;
   club_name: string;
@@ -194,7 +224,7 @@ export interface ClubWriteRequest {
 
 export interface AdminApplicationListItem {
   id: string;
-  user_id: string;
+  user_id: string | null;
   user_name: string;
   user_student_id: string;
   status: string;
@@ -203,6 +233,7 @@ export interface AdminApplicationListItem {
   applicant_department: string | null;
   applicant_phone: string | null;
   applicant_grade: string | null;
+  applicant_type: "member" | "guest";
 }
 
 export interface AdminApplicationDetail extends AdminApplicationListItem {
@@ -222,7 +253,7 @@ export interface ClubMember {
 
 export interface PostListItem {
   id: string;
-  author_id: string;
+  author_id: string | null;
   author_name: string;
   post_type: string;
   title: string;
@@ -230,20 +261,24 @@ export interface PostListItem {
   created_at: string;
   comment_count: number;
   is_author_president: boolean;
+  is_anonymous?: boolean;
 }
 
 export interface CommentResponse {
   id: string;
   post_id: string;
-  author_id: string;
+  author_id: string | null;
   author_name: string;
   content: string;
   created_at: string;
   is_author_president: boolean;
+  is_anonymous?: boolean;
 }
 
 export interface PostDetailResponse extends Omit<PostListItem, "comment_count"> {
-  club_id: string;
+  can_manage?: boolean;
+  club_id: string | null;
+  board_scope?: "club" | "global" | "service";
   content: string;
   comments: CommentResponse[];
 }
@@ -376,6 +411,11 @@ function mapUser(apiUser: ApiUser): User {
     name: apiUser.name,
     department: apiUser.department,
     phone: apiUser.phone,
+    email: apiUser.email,
+    emailVerified: apiUser.email_verified,
+    onboardingCompleted: apiUser.onboarding_completed,
+    guideHiddenUntil: apiUser.guide_hidden_until,
+    platformRoles: apiUser.platform_roles ?? [],
     isClubAdmin: apiUser.is_club_admin,
   };
 }
@@ -526,13 +566,55 @@ class ApiClient {
     return this.request<void>("/auth/me", { method: "DELETE" });
   }
 
+  async updateProfile(data: { name: string; department: string; phone: string }): Promise<User> {
+    return mapUser(await this.request<ApiUser>("/auth/me", {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }));
+  }
+
+  changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    return this.request<void>("/auth/password/change", {
+      method: "POST",
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    });
+  }
+
+  getInterests(): Promise<UserInterestsResponse> {
+    return this.request<UserInterestsResponse>("/auth/me/interests");
+  }
+
+  updateInterests(interests: string[], completeOnboarding = true): Promise<UserInterestsResponse> {
+    return this.request<UserInterestsResponse>("/auth/me/interests", {
+      method: "PUT",
+      body: JSON.stringify({
+        interests: interests.map((value) => ({ tag_key: "interest", tag_value: value })),
+        complete_onboarding: completeOnboarding,
+      }),
+    });
+  }
+
+  async hideGuideToday(): Promise<User> {
+    return mapUser(await this.request<ApiUser>("/auth/me/guide-hide-today", { method: "POST" }));
+  }
+
   async signup(data: SignupRequest): Promise<SignupResponse> {
     const response = await this.request<ApiSignupResponse>("/auth/register", {
       method: "POST",
       body: JSON.stringify({
         student_id: data.studentId,
         name: data.name,
+        department: data.department,
+        phone: data.phone,
+        email: data.email,
         password: data.password,
+        privacy_consent: {
+          required_agreed: data.privacyConsentRequired,
+          optional_agreed: data.privacyConsentOptional,
+          policy_version: PRIVACY_POLICY_VERSION,
+        },
+        email_verification_token: data.emailVerificationToken,
+        link_guest_applications: data.linkGuestApplications,
       }),
     }, false);
     return {
@@ -543,6 +625,31 @@ class ApiClient {
       phone: response.phone,
       createdAt: response.created_at,
     };
+  }
+
+  requestSignupEmail(email: string): Promise<{ message: string }> {
+    return this.request("/auth/email/request", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }, false);
+  }
+
+  verifySignupEmail(email: string, token: string, linkGuestApplications: boolean): Promise<{ message: string; linked_guest_applications: number; verification_token: string | null }> {
+    return this.request("/auth/email/verify", {
+      method: "POST",
+      body: JSON.stringify({
+        email,
+        token,
+        link_guest_applications: linkGuestApplications,
+      }),
+    }, false);
+  }
+
+  resendSignupEmail(email: string): Promise<{ message: string }> {
+    return this.request("/auth/email/resend", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }, false);
   }
 
   getClubs(search?: string): Promise<ClubResponse[]> {
@@ -688,6 +795,31 @@ class ApiClient {
     });
   }
 
+  /** 비회원 지원서 제출 (로그인 토큰 없이 요청하며, 실패해도 세션 만료 처리를 하지 않는다) */
+  createGuestApplication(
+    formId: string,
+    answers: ApplicationAnswerInput[],
+    applicantInfo: GuestApplicantInfoInput,
+    privacyConsent: boolean,
+    guestNoticeConsent: boolean,
+  ): Promise<ApiApplicationDetail> {
+    return this.request<ApiApplicationDetail>(
+      "/guest/applications",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          form_id: formId,
+          answers,
+          privacy_consent: privacyConsent,
+          guest_notice_consent: guestNoticeConsent,
+          privacy_policy_version: PRIVACY_POLICY_VERSION,
+          ...applicantInfo,
+        }),
+      },
+      false,
+    );
+  }
+
   patchApplication(
     applicationId: string,
     answers: ApplicationAnswerInput[],
@@ -723,10 +855,12 @@ class ApiClient {
     size = 20,
     query = "",
     status = "",
+    applicantType = "",
   ): Promise<PageResponse<AdminApplicationListItem>> {
     const params = new URLSearchParams({ page: String(page), size: String(size) });
     if (query.trim()) params.set("q", query.trim());
     if (status) params.set("status", status);
+    if (applicantType) params.set("applicant_type", applicantType);
     return this.request<PageResponse<AdminApplicationListItem>>(
       `/clubs/${encodeURIComponent(clubId)}/applications?${params.toString()}`,
     );
@@ -755,10 +889,12 @@ class ApiClient {
     size = 100,
     query = "",
     status = "",
+    applicantType = "",
   ): Promise<PageResponse<AdminApplicationDetail>> {
     const params = new URLSearchParams({ page: String(page), size: String(size) });
     if (query.trim()) params.set("q", query.trim());
     if (status) params.set("status", status);
+    if (applicantType) params.set("applicant_type", applicantType);
     return this.request<PageResponse<AdminApplicationDetail>>(
       `/clubs/${encodeURIComponent(clubId)}/applications/export?${params.toString()}`,
     );
@@ -793,6 +929,27 @@ class ApiClient {
     return this.request<void>(
       `/clubs/${encodeURIComponent(clubId)}/members/${encodeURIComponent(userId)}/role`,
       { method: "PATCH" },
+    );
+  }
+
+  assignClubAdmin(clubId: string, userId: string): Promise<ClubMember> {
+    return this.request<ClubMember>(
+      `/clubs/${encodeURIComponent(clubId)}/members/${encodeURIComponent(userId)}/admin`,
+      { method: "PATCH" },
+    );
+  }
+
+  revokeClubAdmin(clubId: string, userId: string): Promise<ClubMember> {
+    return this.request<ClubMember>(
+      `/clubs/${encodeURIComponent(clubId)}/members/${encodeURIComponent(userId)}/admin`,
+      { method: "DELETE" },
+    );
+  }
+
+  deleteClubApplicationAsAdmin(clubId: string, applicationId: string, reason: string): Promise<void> {
+    return this.request<void>(
+      `/clubs/${encodeURIComponent(clubId)}/applications/${encodeURIComponent(applicationId)}`,
+      { method: "DELETE", body: JSON.stringify({ reason }) },
     );
   }
 
@@ -845,10 +1002,10 @@ class ApiClient {
     return this.request<PostListItem[]>(`/clubs/${encodeURIComponent(clubId)}/posts`, {}, false);
   }
 
-  createClubPost(clubId: string, title: string, content: string): Promise<PostDetailResponse> {
+  createClubPost(clubId: string, title: string, content: string, isNotice = false): Promise<PostDetailResponse> {
     return this.request<PostDetailResponse>(`/clubs/${encodeURIComponent(clubId)}/posts`, {
       method: "POST",
-      body: JSON.stringify({ title, content }),
+      body: JSON.stringify({ title, content, is_notice: isNotice }),
     });
   }
 
@@ -895,6 +1052,60 @@ class ApiClient {
   deleteComment(clubId: string, postId: string, commentId: string): Promise<void> {
     return this.request<void>(
       `/clubs/${encodeURIComponent(clubId)}/posts/${encodeURIComponent(postId)}/comments/${encodeURIComponent(commentId)}`,
+      { method: "DELETE" },
+    );
+  }
+
+  getBoardPosts(scope: "global" | "service", page = 1, size = 20): Promise<PageResponse<PostListItem>> {
+    return this.request<PageResponse<PostListItem>>(`/boards/${scope}/posts?page=${page}&size=${size}`);
+  }
+
+  getBoardPost(scope: "global" | "service", postId: string): Promise<PostDetailResponse> {
+    return this.request<PostDetailResponse>(`/boards/${scope}/posts/${encodeURIComponent(postId)}`);
+  }
+
+  createGlobalPost(title: string, content: string, isAnonymous = false): Promise<PostDetailResponse> {
+    return this.request<PostDetailResponse>("/boards/global/posts", {
+      method: "POST",
+      body: JSON.stringify({ title, content, is_anonymous: isAnonymous }),
+    });
+  }
+
+  createServicePost(title: string, content: string): Promise<PostDetailResponse> {
+    return this.request<PostDetailResponse>("/boards/service/posts", {
+      method: "POST",
+      body: JSON.stringify({ title, content, is_anonymous: false }),
+    });
+  }
+
+  updateGlobalPost(postId: string, data: { title?: string; content?: string; is_anonymous?: boolean }): Promise<PostDetailResponse> {
+    return this.request<PostDetailResponse>(`/boards/global/posts/${encodeURIComponent(postId)}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  }
+
+  updateServicePost(postId: string, data: { title?: string; content?: string }): Promise<PostDetailResponse> {
+    return this.request<PostDetailResponse>(`/boards/service/posts/${encodeURIComponent(postId)}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  }
+
+  deleteBoardPost(scope: "global" | "service", postId: string): Promise<void> {
+    return this.request<void>(`/boards/${scope}/posts/${encodeURIComponent(postId)}`, { method: "DELETE" });
+  }
+
+  createGlobalComment(postId: string, content: string): Promise<CommentResponse> {
+    return this.request<CommentResponse>(`/boards/global/posts/${encodeURIComponent(postId)}/comments`, {
+      method: "POST",
+      body: JSON.stringify({ content }),
+    });
+  }
+
+  deleteGlobalComment(postId: string, commentId: string): Promise<void> {
+    return this.request<void>(
+      `/boards/global/posts/${encodeURIComponent(postId)}/comments/${encodeURIComponent(commentId)}`,
       { method: "DELETE" },
     );
   }

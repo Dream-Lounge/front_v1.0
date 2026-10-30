@@ -1,25 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { ChevronRight, Plus, Sparkles } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { formatEndDateLabel } from "@/lib/date";
-import { FEATURES } from "@/config/features";
+import { ChevronRight, Plus } from "lucide-react";
 import { api } from "@/lib/api";
-import { useHorizontalScroll } from "@/hooks/useHorizontalScroll";
-import { ScrollArrowButton } from "@/components/common/ScrollArrowButton";
-
-interface RecruitingClub {
-  id: string;
-  title: string;
-  category: string;
-  endDate: string;
-  deadlineText: string;
-  image: string;
-  textColor: string;
-  aiRecommended: boolean;
-}
+import { ClubCardRail, type PosterClub } from "@/components/home/ClubCardRail";
 
 /**
  * 모집중인 동아리 및 분과별 소개 섹션 컴포넌트
@@ -28,12 +11,11 @@ interface RecruitingClub {
  */
 export function RecruitingSection() {
   const navigate = useNavigate();
-  const clubScroll = useHorizontalScroll<HTMLDivElement>();
 
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const [recruitingClubs, setRecruitingClubs] = useState<RecruitingClub[]>([]);
+  const [recruitingClubs, setRecruitingClubs] = useState<PosterClub[]>([]);
   const [divisions, setDivisions] = useState<Array<{ name: string; count: number }>>([]);
 
   useEffect(() => {
@@ -49,10 +31,7 @@ export function RecruitingSection() {
             title: club.name,
             category: club.division || club.club_type || "기타",
             endDate: club.recruit_end?.replaceAll("-", ".") || "상시모집",
-            deadlineText: "",
             image: club.image_url || "/logo.svg",
-            textColor: "text-white",
-            aiRecommended: false,
           })),
         );
         const counts = new Map<string, number>();
@@ -92,84 +71,19 @@ export function RecruitingSection() {
         </div>
 
         {/* 가로 스크롤 동아리 카드 */}
-        <div className="relative min-w-0 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
-          <div
-            ref={clubScroll.ref}
-            className="dream-club-track flex items-stretch gap-3 overflow-x-auto scroll-smooth lg:h-full [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          >
-            {loading || failed || recruitingClubs.length === 0 ? (
-              <div className="dream-data-state" role="status">
-                <p>{loading ? "동아리 정보를 불러오는 중입니다." : failed ? "동아리 정보를 불러오지 못했습니다." : "현재 모집 중인 동아리가 없습니다."}</p>
-                {failed && <button type="button" onClick={() => setAttempt((value) => value + 1)}>다시 불러오기</button>}
-              </div>
-            ) : null}
-            {recruitingClubs.map((club) => (
-              <Card
-                key={club.id}
-                className={cn(
-                  club.textColor,
-                  "dream-club-card relative aspect-[3/4] h-36 w-auto shrink-0 overflow-hidden border-none py-0 gap-0 shadow-sm sm:h-56 lg:h-full",
-                  "group cursor-pointer",
-                  "transition-all duration-300 hover:-translate-y-1 hover:shadow-lg",
-                )}
-                role="link"
-                tabIndex={0}
-                aria-label={`${club.title} 동아리 상세 보기`}
-                onKeyDown={(event) => { if (event.key === "Enter") navigate(`/club/${club.id}`); }}
-                onClick={() => navigate(`/club/${club.id}`)}
-              >
-                <div
-                  className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-500 group-hover:scale-110"
-                  style={{ backgroundImage: `url(${club.image})` }}
-                />
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-
-                <CardContent className="relative z-10 flex h-full min-h-0 flex-col justify-between p-3.5">
-                  <div className="flex items-start justify-between gap-2">
-                    <Badge className="border-none bg-primary/90 font-semibold text-primary-foreground backdrop-blur-sm">
-                      {club.category}
-                    </Badge>
-                    {FEATURES.aiRecommend && club.aiRecommended && (
-                      <Badge className="shrink-0 gap-1 border-none bg-white/85 px-1.5 font-semibold text-primary backdrop-blur-sm sm:px-2.5">
-                        <Sparkles className="size-3" />
-                        <span className="hidden sm:inline">AI추천</span>
-                      </Badge>
-                    )}
-                  </div>
-                  <div>
-                    <h3 className="mb-0.5 line-clamp-1 text-base font-bold drop-shadow-md">
-                      {club.title}
-                    </h3>
-                    <p className="text-xs opacity-90 drop-shadow-sm">
-                      {formatEndDateLabel(club.endDate)}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {clubScroll.canScrollPrev && (
-            <ScrollArrowButton
-              direction="prev"
-              onClick={() => clubScroll.scroll("prev", 360)}
-              label="이전 동아리"
-              className="absolute left-0 top-1/2 size-10 -translate-y-1/2"
-            />
-          )}
-          {clubScroll.canScrollNext && (
-            <ScrollArrowButton
-              direction="next"
-              onClick={() => clubScroll.scroll("next", 360)}
-              label="다음 동아리"
-              className="absolute right-0 top-1/2 size-10 -translate-y-1/2"
-            />
-          )}
-        </div>
+        <ClubCardRail
+          clubs={recruitingClubs}
+          emptyState={
+            <div className="dream-data-state" role="status">
+              <p>{loading ? "동아리 정보를 불러오는 중입니다." : failed ? "동아리 정보를 불러오지 못했습니다." : "현재 모집 중인 동아리가 없습니다."}</p>
+              {failed && <button type="button" onClick={() => setAttempt((value) => value + 1)}>다시 불러오기</button>}
+            </div>
+          }
+        />
       </div>
 
-      {/* 우측 컬럼: 분과별 모아보기 (타이틀 + 분과 목록) */}
-      <div className="flex flex-col gap-6">
+      {/* 우측 컬럼: 분과별 모아보기 (타이틀 + 분과 목록). 넓은 화면에서는 좌측 카드 높이에 맞춰 늘고 준다. */}
+      <div className="dream-recruiting-side flex flex-col gap-6">
         {/* 섹션 헤더 */}
         <div className="flex items-center">
           <h2 className="text-2xl font-extrabold text-gray-900 sm:text-3xl">
@@ -178,7 +92,7 @@ export function RecruitingSection() {
         </div>
 
         {/* 분과 목록 */}
-        <aside className="dream-divisions flex w-full shrink-0 flex-col lg:w-96">
+        <aside className="dream-divisions flex w-full shrink-0 flex-col">
           {(loading || failed || divisions.length === 0) && <p className="py-6 text-sm text-muted-foreground" role="status">{loading ? "분과 정보를 불러오는 중입니다." : failed ? "분과 정보를 불러오지 못했습니다." : "등록된 분과가 없습니다."}</p>}
           {divisions.map((division) => (
             <button

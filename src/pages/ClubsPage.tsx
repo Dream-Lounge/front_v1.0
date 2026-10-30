@@ -120,7 +120,7 @@ export function ClubsPage() {
       : `${activeFilterLabel} 동아리`;
 
   return (
-    <div className="dream-directory mx-auto w-full max-w-7xl pb-16 sm:pb-20">
+    <div className="dream-directory mx-auto w-full pb-16 sm:pb-20">
       <div className="flex flex-col gap-6 sm:gap-8">
         {FEATURES.aiRecommend && (
           <AiRecommendationPanel onOpenClub={(clubId) => navigate(`/club/${clubId}`)} />

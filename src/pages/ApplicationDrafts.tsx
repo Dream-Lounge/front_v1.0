@@ -53,7 +53,7 @@ export function ApplicationDrafts() {
   }
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-8">
+    <div className="mx-auto flex w-full flex-col gap-8">
       <h2 className="text-2xl font-bold text-foreground sm:text-3xl">임시저장함</h2>
       {drafts.length > 0 ? (
         <div className="flex flex-col gap-4">

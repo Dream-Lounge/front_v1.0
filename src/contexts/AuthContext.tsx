@@ -1,19 +1,16 @@
-import { useState, useCallback, useEffect, type ReactNode } from "react";
+import { startTransition, useState, useCallback, useEffect, type ReactNode } from "react";
 import { api, isSessionExpiredError, type User } from "@/lib/api";
 import { AuthContext } from "./auth";
 import { SessionExpiredDialog } from "@/components/common/SessionExpiredDialog";
+
+/** 관리자 페이지를 쓸 수 있는 동아리 역할 (회장, 관리자) */
+const isManagerRole = (club: { role: string }) => club.role === "president" || club.role === "admin";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSessionExpired, setIsSessionExpired] = useState(false);
   const [managedClubs, setManagedClubs] = useState<Awaited<ReturnType<typeof api.getMyClubs>>>([]);
-
-  const refreshManagedClubs = useCallback(async () => {
-    const clubs = (await api.getMyClubs()).filter((club) => club.role === "president");
-    setManagedClubs(clubs);
-    return clubs;
-  }, []);
 
   useEffect(() => {
     let active = true;
@@ -39,7 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         if (active) {
           setUser(currentUser);
-          setManagedClubs(clubs.filter((club) => club.role === "president"));
+          setManagedClubs(clubs.filter(isManagerRole));
         }
       })
       .catch(() => {
@@ -69,7 +66,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (isSessionExpiredError(error)) throw error;
     }
     setUser(response.user);
-    setManagedClubs(clubs.filter((club) => club.role === "president"));
+    setManagedClubs(clubs.filter(isManagerRole));
+    return response.user;
+  }, []);
+
+  const refreshUser = useCallback(async () => {
+    try {
+      const currentUser = await api.getCurrentUser();
+      setUser(currentUser);
+      return currentUser;
+    } catch (error) {
+      if (!isSessionExpiredError(error)) setUser(null);
+      return null;
+    }
   }, []);
 
   const logout = useCallback(async () => {
@@ -78,6 +87,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setUser(null);
       setManagedClubs([]);
+    }
+  }, []);
+
+  const deleteAccount = useCallback(async () => {
+    await api.deleteAccount();
+    // 탈퇴한 계정으로는 로그아웃 요청도 실패하므로 서버를 거치지 않고 상태만 비운다.
+    api.clearTokens();
+    // 라우터 이동과 같은 전환(transition)으로 묶어, 호출한 쪽의 navigate()와 한 번에 반영되게 한다.
+    // 그렇지 않으면 로그인 상태가 먼저 비워져 보호된 페이지가 /login으로 튕겨 낸다.
+    startTransition(() => {
+      setUser(null);
+      setManagedClubs([]);
+    });
+  }, []);
+
+  /** 회장 위임·탈퇴 처리처럼 내 동아리 역할이 바뀐 뒤 관리 가능한 동아리 목록을 다시 불러온다. */
+  const refreshManagedClubs = useCallback(async () => {
+    try {
+      setManagedClubs((await api.getMyClubs()).filter(isManagerRole));
+    } catch (error) {
+      if (!isSessionExpiredError(error)) setManagedClubs([]);
     }
   }, []);
 
@@ -101,9 +131,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isSessionExpired,
         managedClubs,
         isClubAdmin: user?.isClubAdmin ?? false,
-        refreshManagedClubs,
         login,
         logout,
+        refreshUser,
+        deleteAccount,
+        refreshManagedClubs,
         handleSessionExpired,
       }}
     >

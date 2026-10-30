@@ -10,6 +10,17 @@ export function formatDeadlineLabel(date: Date): string {
 }
 
 /**
+ * "YYYY-MM-DD"(API 날짜) 문자열을 "YYYY.MM.DD(요일)"로 변환합니다.
+ * - 형식이 다르면 원본 문자열을 그대로 반환합니다.
+ */
+export function formatDateWithWeekday(value: string): string {
+  const m = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return value;
+  const date = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return `${m[1]}.${m[2]}.${m[3]}(${WEEKDAYS[date.getDay()]})`;
+}
+
+/**
  * (연, 월, 일) 값을 "~MM.DD(요일)" 형식으로 변환합니다.
  */
 export function recruitDeadlineLabel(year: number, month: number, day: number): string {

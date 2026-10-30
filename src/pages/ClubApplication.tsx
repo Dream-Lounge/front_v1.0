@@ -1,7 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { ArrowLeft, Check, FileText, HelpCircle, Loader2, Save, Send, Users } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, FileText, HelpCircle, Loader2, Save, Send, Users } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DepartmentCombobox } from "@/components/common/DepartmentCombobox";
 import { useAuth } from "@/hooks/useAuth";
-import { api, isSessionExpiredError, type ApplicantInfoInput, type ApplicationFormResponse, type FormQuestionResponse } from "@/lib/api";
+import { api, isSessionExpiredError, type ApplicantInfoInput, type ApplicationFormResponse, type FormQuestionResponse, type GuestApplicantInfoInput } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 type ApplicationMode = "create" | "edit" | "view";
@@ -46,6 +56,10 @@ export function ClubApplication() {
   const navigate = useNavigate();
   const { user, isLoading: isAuthLoading } = useAuth();
   const mode = getMode(location.pathname);
+  // 로그인 화면의 '비회원으로 지원하기'로 들어온 경우에만 비회원 작성을 허용한다.
+  const guestState = location.state as { guest?: boolean; guestNoticeConsent?: boolean } | null;
+  const guestNoticeConsent = guestState?.guestNoticeConsent === true;
+  const isGuest = !user && mode === "create" && guestState?.guest === true && guestNoticeConsent;
 
   const [clubId, setClubId] = useState("");
   const [clubName, setClubName] = useState("");
@@ -64,17 +78,18 @@ export function ClubApplication() {
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [privacyConsent, setPrivacyConsent] = useState(false);
   const [privacyConsentError, setPrivacyConsentError] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   useEffect(() => {
-    if (isAuthLoading || !id) return;
+    if (isAuthLoading || !id || (!user && !isGuest)) return;
     let active = true;
 
     const load = async () => {
       setIsDataLoading(true);
-      setSubmitError(null);
+      setLoadError(null);
       try {
         let resolvedClubId = id;
         let initialAnswers: Record<string, string> = {};
@@ -87,7 +102,7 @@ export function ClubApplication() {
           grade: "",
         };
 
-        if (mode === "create") {
+        if (mode === "create" && user) {
           const [hasSubmitted, drafts] = await Promise.all([
             api.checkApplicationStatus(id),
             api.getDraftApplications(),
@@ -103,7 +118,7 @@ export function ClubApplication() {
             navigate(user ? `/users/${user.studentId}/applications` : "/", { replace: true });
             return;
           }
-        } else {
+        } else if (mode !== "create") {
           const application = mode === "edit"
             ? await api.getDraftApplication(id)
             : await api.getSubmittedApplication(id);
@@ -143,7 +158,7 @@ export function ClubApplication() {
         setAnswers(initialAnswers);
       } catch (error) {
         if (active && !isSessionExpiredError(error)) {
-          setSubmitError(error instanceof Error ? error.message : "지원서 정보를 불러오지 못했습니다.");
+          setLoadError(error instanceof Error ? error.message : "지원서 정보를 불러오지 못했습니다.");
         }
       } finally {
         if (active) setIsDataLoading(false);
@@ -152,7 +167,7 @@ export function ClubApplication() {
 
     void load();
     return () => { active = false; };
-  }, [id, isAuthLoading, mode, navigate, user]);
+  }, [id, isAuthLoading, isGuest, mode, navigate, user]);
 
   const orderedQuestions = useMemo(
     () => [...(form?.questions ?? [])].sort((a, b) => a.order_index - b.order_index),
@@ -185,6 +200,8 @@ export function ClubApplication() {
     applicant_grade: applicantInfo.grade.trim(),
   });
 
+  const buildGuestApplicantInfo = (): GuestApplicantInfoInput => buildApplicantInfo();
+
   const setApplicantField = (field: ApplicantField, value: string) => {
     setApplicantInfo((previous) => ({ ...previous, [field]: value }));
     setApplicantErrors((previous) => ({ ...previous, [field]: undefined }));
@@ -210,21 +227,37 @@ export function ClubApplication() {
     return !Object.values(next).some(Boolean);
   };
 
-  const handleSubmit = async () => {
+  /** 입력값 검사를 통과하면 제출 전 안내 팝업을 띄운다. 실제 제출은 팝업에서 확인한 뒤 진행한다. */
+  const handleSubmit = () => {
     const isApplicantInfoValid = validateApplicantInfo();
     const areAnswersValid = validate();
     setPrivacyConsentError(!privacyConsent);
     if (!id || !form || mode === "view" || !isApplicantInfoValid || !areAnswersValid || !privacyConsent) return;
+    setIsConfirmOpen(true);
+  };
+
+  const confirmSubmit = async () => {
+    if (!id || !form || mode === "view") return;
     setIsSubmitting(true);
-    setSubmitError(null);
     try {
-      if (mode === "create") await api.createApplication(form.id, buildAnswers(), false, buildApplicantInfo(), true);
+      if (isGuest) {
+        await api.createGuestApplication(
+          form.id,
+          buildAnswers(),
+          buildGuestApplicantInfo(),
+          privacyConsent,
+          guestNoticeConsent,
+        );
+      }
+      else if (mode === "create") await api.createApplication(form.id, buildAnswers(), false, buildApplicantInfo(), true);
       else await api.patchApplication(id, buildAnswers(), buildApplicantInfo(), false, true);
       toast.success("지원서가 성공적으로 제출되었습니다.");
+      setIsConfirmOpen(false);
       navigate(user ? `/users/${user.studentId}/applications` : `/club/${clubId}`);
     } catch (error) {
+      setIsConfirmOpen(false);
       if (!isSessionExpiredError(error)) {
-        setSubmitError(error instanceof Error ? error.message : "지원서 제출에 실패했습니다.");
+        toast.error(error instanceof Error ? error.message : "지원서 제출에 실패했습니다.");
       }
     } finally {
       setIsSubmitting(false);
@@ -234,7 +267,6 @@ export function ClubApplication() {
   const handleSaveDraft = async () => {
     if (!id || !form || mode === "view") return;
     setIsSubmitting(true);
-    setSubmitError(null);
     try {
       if (mode === "create") {
         await api.createApplication(form.id, buildAnswers(), true, buildApplicantInfo());
@@ -247,12 +279,17 @@ export function ClubApplication() {
       navigate(user ? `/users/${user.studentId}/drafts` : "/", { replace: true });
     } catch (error) {
       if (!isSessionExpiredError(error)) {
-        setSubmitError(error instanceof Error ? error.message : "임시저장에 실패했습니다.");
+        toast.error(error instanceof Error ? error.message : "임시저장에 실패했습니다.");
       }
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  // 로그인하지 않았고 비회원 모드도 아니면 로그인 화면으로 보낸다. (로그인 화면에서 비회원 지원을 고를 수 있다)
+  if (!isAuthLoading && !user && !isGuest) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  }
 
   if (isAuthLoading || isDataLoading) {
     return <div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="size-8 animate-spin text-primary" /></div>;
@@ -261,7 +298,7 @@ export function ClubApplication() {
   if (!form) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
-        <p className="font-medium text-destructive">{submitError ?? "활성화된 신청폼이 없습니다."}</p>
+        <p className="font-medium text-destructive">{loadError ?? "활성화된 신청폼이 없습니다."}</p>
         <Button variant="outline" onClick={() => navigate(-1)}>뒤로 가기</Button>
       </div>
     );
@@ -270,7 +307,7 @@ export function ClubApplication() {
   const isReadOnly = mode === "view";
   return (
     <div className="min-h-screen">
-      <div className="container mx-auto max-w-4xl px-4">
+      <div className="mx-auto w-full">
         <Button variant="outline" onClick={() => navigate(-1)} className="mb-6 gap-2 text-muted-foreground">
           <ArrowLeft className="size-4" /> 이전 화면으로 돌아가기
         </Button>
@@ -294,8 +331,8 @@ export function ClubApplication() {
             <CardHeader><CardTitle className="flex items-center gap-3 text-lg"><div className="rounded-lg bg-primary/10 p-2"><FileText className="size-5 text-primary" /></div>기본 정보</CardTitle></CardHeader>
             <CardContent>
               <FieldGroup className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <ApplicantFieldInput label="학번" field="studentId" value={applicantInfo.studentId} error={applicantErrors.studentId} readOnly inputMode="numeric" maxLength={10} placeholder="학번 10자리" onChange={(value) => setApplicantField("studentId", value.replace(/\D/g, ""))} />
-                <ApplicantFieldInput label="이름" field="name" value={applicantInfo.name} error={applicantErrors.name} readOnly maxLength={50} placeholder="이름" onChange={(value) => setApplicantField("name", value)} />
+                <ApplicantFieldInput label="학번" field="studentId" value={applicantInfo.studentId} error={applicantErrors.studentId} readOnly={isReadOnly || !isGuest} inputMode="numeric" maxLength={10} placeholder="학번 10자리" onChange={(value) => setApplicantField("studentId", value.replace(/\D/g, ""))} />
+                <ApplicantFieldInput label="이름" field="name" value={applicantInfo.name} error={applicantErrors.name} readOnly={isReadOnly || !isGuest} maxLength={50} placeholder="이름" onChange={(value) => setApplicantField("name", value)} />
                 {isReadOnly ? (
                   <ApplicantFieldInput label="학과" field="department" value={applicantInfo.department} error={applicantErrors.department} readOnly maxLength={100} placeholder="학과" onChange={(value) => setApplicantField("department", value)} />
                 ) : (
@@ -347,13 +384,58 @@ export function ClubApplication() {
             </CardContent>
           </Card>
 
-          {submitError && <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">{submitError}</div>}
           {!isReadOnly && (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Button variant="outline" size="lg" className="w-full py-6 text-base font-bold" onClick={handleSaveDraft} disabled={isSubmitting}><Save className="mr-2 size-5" /> 임시저장</Button>
+            <div className={cn("grid grid-cols-1 gap-3", !isGuest && "sm:grid-cols-2")}>
+              {/* 비회원은 임시저장을 쓸 수 없다. */}
+              {!isGuest && <Button variant="outline" size="lg" className="w-full py-6 text-base font-bold" onClick={handleSaveDraft} disabled={isSubmitting}><Save className="mr-2 size-5" /> 임시저장</Button>}
               <Button size="lg" className="w-full py-6 text-base font-bold" onClick={handleSubmit} disabled={isSubmitting}>{isSubmitting ? <Loader2 className="mr-2 size-5 animate-spin" /> : <Send className="mr-2 size-5" />} 지원서 제출</Button>
             </div>
           )}
+
+          {/* 제출 전 안내: 회원은 제출 후 삭제·회수 불가, 비회원은 이후 관리 기능을 쓸 수 없음 */}
+          <AlertDialog open={isConfirmOpen} onOpenChange={(open) => { if (!isSubmitting) setIsConfirmOpen(open); }}>
+            <AlertDialogContent className="gap-5 py-9">
+              <AlertDialogHeader className="gap-5 text-center sm:text-center">
+                <AlertDialogTitle>지원서를 제출할까요?</AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                  <div className="space-y-5 text-sm">
+                    <div className="mx-auto flex w-fit max-w-full gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-5 text-left text-amber-900">
+                      <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
+                      {user ? (
+                        <p>
+                          제출한 지원서는 <strong>삭제하거나 회수할 수 없습니다.</strong>
+                        </p>
+                      ) : (
+                        <div>
+                          <p>비회원으로 제출하면 제출 후 아래 기능을 이용할 수 없습니다.</p>
+                          <ul className="mt-1.5 list-disc space-y-0.5 pl-4 font-semibold">
+                            <li>지원서 수정·삭제</li>
+                            <li>임시저장</li>
+                            <li>지원 상태 확인</li>
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                    <p>제출하기 전에 작성한 내용을 한 번 더 확인해주세요.</p>
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="sm:justify-center">
+                <AlertDialogCancel disabled={isSubmitting}>취소</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(event) => {
+                    // 제출 요청이 끝날 때까지 팝업을 닫지 않는다.
+                    event.preventDefault();
+                    void confirmSubmit();
+                  }}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting && <Loader2 className="size-4 animate-spin" aria-hidden />}
+                  제출하기
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
     </div>

@@ -97,7 +97,7 @@ export function PostDetail() {
     membership?.role === "president"
   );
 
-  const canDeleteComment = (commentAuthorId: string) => {
+  const canDeleteComment = (commentAuthorId: string | null) => {
     if (!user) return false;
     return commentAuthorId === user.id || membership?.role === "president";
   };

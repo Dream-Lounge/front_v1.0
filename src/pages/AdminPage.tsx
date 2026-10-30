@@ -26,6 +26,9 @@ import {
   Loader2,
   BookOpen,
   ExternalLink,
+  Users,
+  MessageSquare,
+  Pencil,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -34,6 +37,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Dialog,
   DialogContent,
@@ -57,13 +61,18 @@ import {
 import { toastApiError } from "@/lib/api-error";
 import { formatKstDate, formatKstDateTime } from "@/lib/date";
 import { CLUB_DIVISION_KEYS } from "@/data/clubDirectoryMeta";
+import { FEATURES } from "@/config/features";
+import { formatPostDate } from "@/lib/board";
+import { MemberManagement, type ClubRole } from "@/components/admin/MemberManagement";
+import { useNavigate } from "react-router-dom";
 
 type AdminTab =
   | "club-register"
   | "application-form"
   | "submitted-applications"
   | "page-tags"
-  | "community-board";
+  | "community-board"
+  | "members";
 
 const ADMIN_MENU: {
   section: string;
@@ -77,6 +86,9 @@ const ADMIN_MENU: {
     section: "동아리 관리",
     items: [
       { label: "동아리 정보", icon: PlusCircle, tab: "club-register" },
+      { label: "회원관리", icon: Users, tab: "members" },
+      // 게시판 관리는 통합게시판과 같은 기능 플래그를 따른다.
+      ...(FEATURES.clubCommunity ? [{ label: "게시판 관리", icon: MessageSquare, tab: "community-board" as const }] : []),
     ],
   },
   {
@@ -133,6 +145,7 @@ interface ApplicationQuestion {
 type ApplicationStatusValue = "검토중" | "합격" | "불합격" | "보류";
 const REVIEW_DECISION_STATUSES = ["보류", "합격", "불합격"] as const satisfies readonly ApplicationStatusValue[];
 type ApplicantStatusFilter = "all" | "passed" | "failed" | "submitted" | "pending";
+type ApplicantTypeFilter = "all" | "member" | "guest";
 
 function isFinalApplicationStatus(status: ApplicationStatusValue): boolean {
   return status === "합격" || status === "불합격";
@@ -167,6 +180,7 @@ interface SubmittedApplication {
   major: string;
   submittedAt: string;
   status: ApplicationStatusValue;
+  applicantType: Exclude<ApplicantTypeFilter, "all">;
 }
 
 type ExportColumnKey =
@@ -229,8 +243,12 @@ function contactHref(link: ClubContactLink): string {
 }
 
 export function AdminPage() {
-  const { managedClubs, refreshManagedClubs } = useAuth();
+  const { managedClubs, user, refreshManagedClubs } = useAuth();
+  const navigate = useNavigate();
   const [selectedClubId, setSelectedClubId] = useState(managedClubs[0]?.club_id ?? "");
+  const isSelectedClubPresident = managedClubs.some(
+    (club) => club.club_id === selectedClubId && club.role === "president",
+  );
   const [activeTab, setActiveTab] = useState<AdminTab>("club-register");
   const [clubName, setClubName] = useState("");
   const [clubCategory, setClubCategory] = useState("");
@@ -239,6 +257,9 @@ export function AdminPage() {
   const [newContactValue, setNewContactValue] = useState("");
   const [clubImageUrl, setClubImageUrl] = useState("");
   const [clubIsRecruiting, setClubIsRecruiting] = useState(false);
+  // 모집 기간 (input[type=date] 값 그대로 "YYYY-MM-DD")
+  const [clubRecruitStart, setClubRecruitStart] = useState("");
+  const [clubRecruitEnd, setClubRecruitEnd] = useState("");
   const [formExists, setFormExists] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
@@ -318,10 +339,17 @@ export function AdminPage() {
   const [applicants, setApplicants] = useState<SubmittedApplication[]>([]);
   const [applicantQuery, setApplicantQuery] = useState("");
   const [applicantStatusFilter, setApplicantStatusFilter] = useState<ApplicantStatusFilter>("all");
+  const [applicantTypeFilter, setApplicantTypeFilter] = useState<ApplicantTypeFilter>("all");
+  const [draftApplicantStatusFilter, setDraftApplicantStatusFilter] = useState<ApplicantStatusFilter>("all");
+  const [draftApplicantTypeFilter, setDraftApplicantTypeFilter] = useState<ApplicantTypeFilter>("all");
+  const [isApplicantFilterOpen, setIsApplicantFilterOpen] = useState(false);
   const [applicantPage, setApplicantPage] = useState(1);
   const [applicantTotal, setApplicantTotal] = useState(0);
   const [applicantTotalPages, setApplicantTotalPages] = useState(1);
   const [selectedApplication, setSelectedApplication] = useState<AdminApplicationDetail | null>(null);
+  const [isDeleteApplicationOpen, setIsDeleteApplicationOpen] = useState(false);
+  const [deleteApplicationReason, setDeleteApplicationReason] = useState("");
+  const [isDeletingApplication, setIsDeletingApplication] = useState(false);
   const [reviewComment, setReviewComment] = useState("");
 
   /**
@@ -329,6 +357,7 @@ export function AdminPage() {
    * 가려진다. 가려진 열이 있을 때만 좌우 이동 버튼을 띄운다.
    */
   const applicantsScroll = useHorizontalScroll<HTMLDivElement>();
+  const postsScroll = useHorizontalScroll<HTMLDivElement>();
 
   /** 신청서 엑셀 다운로드 — 항목 선택 다이얼로그 */
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
@@ -420,6 +449,8 @@ export function AdminPage() {
         setClubDetailDescription(club.description ?? "");
         setClubImageUrl(club.image_url ?? "");
         setClubIsRecruiting(club.is_recruiting);
+        setClubRecruitStart(club.recruit_start?.slice(0, 10) ?? "");
+        setClubRecruitEnd(club.recruit_end?.slice(0, 10) ?? "");
         const savedContactLinks = club.contact_links?.length
           ? club.contact_links
           : [
@@ -474,6 +505,7 @@ export function AdminPage() {
         APPLICANTS_PER_PAGE,
         applicantQuery,
         applicantStatusFilter === "all" ? "" : applicantStatusFilter,
+        applicantTypeFilter === "all" ? "" : applicantTypeFilter,
       ).then((result) => {
         if (!active) return;
         setApplicants(result.items.map((row) => ({
@@ -483,6 +515,7 @@ export function AdminPage() {
           major: row.applicant_department ?? "—",
           submittedAt: row.submitted_at ? formatKstDate(row.submitted_at) : "—",
           status: statusFromApi(row.status),
+          applicantType: row.applicant_type,
         })));
         setApplicantTotal(result.total);
         setApplicantTotalPages(Math.max(1, result.pages));
@@ -494,7 +527,7 @@ export function AdminPage() {
       active = false;
       window.clearTimeout(timer);
     };
-  }, [applicantPage, applicantQuery, applicantStatusFilter, selectedClubId]);
+  }, [applicantPage, applicantQuery, applicantStatusFilter, applicantTypeFilter, selectedClubId]);
 
   const safeApplicantPage = Math.min(applicantPage, applicantTotalPages);
   const pagedApplicants = applicants;
@@ -947,6 +980,14 @@ export function AdminPage() {
       toast.error("분과를 선택해주세요.");
       return;
     }
+    if (Boolean(clubRecruitStart) !== Boolean(clubRecruitEnd)) {
+      toast.error("모집 시작일과 마감일을 모두 입력해주세요.");
+      return;
+    }
+    if (clubRecruitStart && clubRecruitEnd && clubRecruitEnd < clubRecruitStart) {
+      toast.error("모집 마감일은 시작일과 같거나 이후여야 합니다.");
+      return;
+    }
     const normalizedContactLinks = contactLinks.map(({ label, value }) => ({
       type: detectContactType(value),
       label: label.trim(),
@@ -976,6 +1017,8 @@ export function AdminPage() {
           caption: photo.caption.trim() || null,
         })),
         is_recruiting: clubIsRecruiting,
+        recruit_start: clubRecruitStart || null,
+        recruit_end: clubRecruitEnd || null,
         tags: tags.map((tag) => ({
           tag_key: "custom",
           tag_value: tag.replace(/^#/, "").trim(),
@@ -1046,6 +1089,7 @@ export function AdminPage() {
           exportPageSize,
           applicantQuery,
           applicantStatusFilter === "all" ? "" : applicantStatusFilter,
+          applicantTypeFilter === "all" ? "" : applicantTypeFilter,
         );
         items.push(...response.items);
         if (exportPage >= response.pages || response.items.length === 0) break;
@@ -1151,6 +1195,34 @@ export function AdminPage() {
       toastApiError(error, "관리자 코멘트 저장에 실패했습니다.");
     }
   };
+
+  const deleteSelectedApplication = async () => {
+    if (!selectedApplication || !selectedClubId || !deleteApplicationReason.trim()) return;
+    setIsDeletingApplication(true);
+    try {
+      await api.deleteClubApplicationAsAdmin(selectedClubId, selectedApplication.id, deleteApplicationReason.trim());
+      setApplicants((previous) => previous.filter((item) => item.id !== selectedApplication.id));
+      setApplicantTotal((previous) => Math.max(0, previous - 1));
+      setSelectedApplication(null);
+      setIsDeleteApplicationOpen(false);
+      setDeleteApplicationReason("");
+      toast.success("신청서를 삭제했습니다.");
+    } catch (error) {
+      toastApiError(error, "신청서를 삭제하지 못했습니다.");
+    } finally {
+      setIsDeletingApplication(false);
+    }
+  };
+
+  // 게시판 관리 탭을 열 때 해당 동아리 게시글을 불러온다.
+  useEffect(() => {
+    if (activeTab !== "community-board" || !selectedClubId) return;
+    let active = true;
+    api.getClubPosts(selectedClubId)
+      .then((posts) => { if (active) setCommunityPosts(posts); })
+      .catch((error) => toastApiError(error, "게시글을 불러오지 못했습니다."));
+    return () => { active = false; };
+  }, [activeTab, selectedClubId]);
 
   const createCommunityPost = async () => {
     if (!selectedClubId || !postTitle.trim() || !postContent.trim()) return;
@@ -1338,6 +1410,51 @@ export function AdminPage() {
                     </button>
                   </div>
                 ))}
+              </div>
+            </section>
+
+            <section className="mt-5">
+              <div className="flex items-center gap-1.5">
+                <h3 id="club-recruit-period-label" className="text-base font-bold text-slate-800">
+                  모집 기간
+                </h3>
+                {/* 마우스를 올리거나 키보드로 포커스하면 안내 말풍선을 보여 준다. */}
+                <span className="group relative inline-flex">
+                  <button
+                    type="button"
+                    aria-label="모집 기간 안내"
+                    aria-describedby="club-recruit-period-tip"
+                    className="inline-flex size-5 items-center justify-center rounded-full text-slate-400 transition-colors hover:text-slate-600 focus-visible:text-slate-600"
+                  >
+                    <Info className="size-4" aria-hidden />
+                  </button>
+                  <span
+                    id="club-recruit-period-tip"
+                    role="tooltip"
+                    className="pointer-events-none absolute top-1/2 left-full z-20 ml-2 w-max max-w-[220px] -translate-y-1/2 break-keep rounded-md bg-slate-900 px-3 py-2 text-xs leading-relaxed text-white opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+                  >
+                    미설정 시 동아리 상세 페이지에 &lsquo;상시&nbsp;모집&rsquo;으로 표시됩니다.
+                  </span>
+                </span>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2" role="group" aria-labelledby="club-recruit-period-label">
+                <Input
+                  type="date"
+                  aria-label="모집 시작일"
+                  value={clubRecruitStart}
+                  max={clubRecruitEnd || undefined}
+                  onChange={(event) => setClubRecruitStart(event.target.value)}
+                  className="h-10 w-full bg-white sm:w-44"
+                />
+                <span className="hidden text-slate-400 sm:inline" aria-hidden>~</span>
+                <Input
+                  type="date"
+                  aria-label="모집 마감일"
+                  value={clubRecruitEnd}
+                  min={clubRecruitStart || undefined}
+                  onChange={(event) => setClubRecruitEnd(event.target.value)}
+                  className="h-10 w-full bg-white sm:w-44"
+                />
               </div>
             </section>
 
@@ -1552,22 +1669,108 @@ export function AdminPage() {
                   className="h-full w-full border-0 bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
                 />
               </label>
-              <label className="relative h-11 w-full sm:w-[118px]">
-                <span className="sr-only">지원 상태 필터</span>
-                <select
-                  value={applicantStatusFilter}
-                  onChange={(event) => {
-                    setApplicantStatusFilter(event.target.value as ApplicantStatusFilter);
-                    setApplicantPage(1);
-                  }}
-                  className="h-full w-full appearance-none rounded-full border-2 border-[#86B4EA] bg-white pl-4 pr-9 text-sm font-bold text-[#165BAA] shadow-sm outline-none transition-colors hover:border-[#5E9DDF] focus:ring-2 focus:ring-[#86B4EA]/30"
-                >
-                  {APPLICANT_STATUS_FILTERS.map((filter) => (
-                    <option key={filter.value} value={filter.value}>{filter.label}</option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-[#315D91]" aria-hidden />
-              </label>
+              <Popover open={isApplicantFilterOpen} onOpenChange={(open) => {
+                setIsApplicantFilterOpen(open);
+                if (open) {
+                  setDraftApplicantStatusFilter(applicantStatusFilter);
+                  setDraftApplicantTypeFilter(applicantTypeFilter);
+                }
+              }}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="relative h-11 w-[92px] shrink-0 justify-start rounded-full border-2 border-[#86B4EA] bg-white pl-4 pr-8 text-left text-sm font-bold text-[#165BAA] shadow-sm hover:border-[#5E9DDF] hover:bg-white"
+                  >
+                    필터
+                    {(applicantStatusFilter !== "all" || applicantTypeFilter !== "all") && (
+                      <span className="absolute -right-1 -top-1 inline-flex size-5 items-center justify-center rounded-full bg-[#165BAA] text-[11px] text-white shadow-sm">
+                        {Number(applicantStatusFilter !== "all") + Number(applicantTypeFilter !== "all")}
+                      </span>
+                    )}
+                    <ChevronDown className="absolute right-3 top-1/2 size-4 -translate-y-1/2 text-[#315D91]" aria-hidden />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-[280px] rounded-2xl border-slate-200 p-4 shadow-xl">
+                  <fieldset>
+                    <legend className="text-sm font-bold text-slate-900">신청 유형</legend>
+                    <div className="mt-2 grid grid-cols-3 gap-2">
+                      {([
+                        ["all", "전체"],
+                        ["member", "회원"],
+                        ["guest", "비회원"],
+                      ] as const).map(([value, label]) => (
+                        <label key={value} className={cn(
+                          "flex h-9 cursor-pointer items-center justify-center rounded-lg border text-sm font-semibold transition-colors",
+                          draftApplicantTypeFilter === value
+                            ? "border-[#2B63B4] bg-[#EEF4FF] text-[#2B63B4]"
+                            : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+                        )}>
+                          <input
+                            type="radio"
+                            name="applicant-type-filter"
+                            value={value}
+                            checked={draftApplicantTypeFilter === value}
+                            onChange={() => setDraftApplicantTypeFilter(value)}
+                            className="sr-only"
+                          />
+                          {label}
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+
+                  <fieldset className="mt-5 border-t border-slate-100 pt-4">
+                    <legend className="text-sm font-bold text-slate-900">심사 상태</legend>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      {APPLICANT_STATUS_FILTERS.map((filter) => (
+                        <label key={filter.value} className={cn(
+                          "flex h-9 cursor-pointer items-center justify-center rounded-lg border text-sm font-semibold transition-colors",
+                          draftApplicantStatusFilter === filter.value
+                            ? "border-[#2B63B4] bg-[#EEF4FF] text-[#2B63B4]"
+                            : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+                        )}>
+                          <input
+                            type="radio"
+                            name="application-status-filter"
+                            value={filter.value}
+                            checked={draftApplicantStatusFilter === filter.value}
+                            onChange={() => setDraftApplicantStatusFilter(filter.value)}
+                            className="sr-only"
+                          />
+                          {filter.label}
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+
+                  <div className="mt-5 flex gap-2 border-t border-slate-100 pt-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-10 flex-1 rounded-lg"
+                      onClick={() => {
+                        setDraftApplicantStatusFilter("all");
+                        setDraftApplicantTypeFilter("all");
+                      }}
+                    >
+                      초기화
+                    </Button>
+                    <Button
+                      type="button"
+                      className="h-10 flex-1 rounded-lg bg-[#1F4F95] text-white hover:bg-[#183F79]"
+                      onClick={() => {
+                        setApplicantStatusFilter(draftApplicantStatusFilter);
+                        setApplicantTypeFilter(draftApplicantTypeFilter);
+                        setApplicantPage(1);
+                        setIsApplicantFilterOpen(false);
+                      }}
+                    >
+                      적용
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
               <Button
                 onClick={() => setIsExportDialogOpen(true)}
                 className="h-11 w-full rounded-xl bg-[#1F4F95] px-5 text-white shadow-sm hover:bg-[#183F79] sm:w-auto"
@@ -1597,14 +1800,15 @@ export function AdminPage() {
               />
             )}
             <div ref={applicantsScroll.ref} className="overflow-x-auto">
-              <table className="min-w-[760px] w-full table-fixed">
+              <table className="min-w-[880px] w-full table-fixed">
               <thead className="bg-[#F8FAFD]">
                 <tr className="h-12 text-left text-sm font-semibold text-slate-500">
-                  <th className="w-[72px] px-4">NO.</th>
+                  <th className="w-[72px] px-4 text-center">NO.</th>
                   <th className="w-[160px] px-4">이름 / 학번</th>
-                  <th className="w-[160px] px-4">학과</th>
-                  <th className="w-[130px] px-4">지원일시</th>
-                  <th className="w-[120px] px-4">상태</th>
+                  <th className="w-[100px] px-4 text-center">회원 구분</th>
+                  <th className="w-[160px] px-4 text-center">학과</th>
+                  <th className="w-[130px] px-4 text-center">지원일시</th>
+                  <th className="w-[120px] px-4 text-center">상태</th>
                   <th className="w-[130px] px-4 text-center">상세보기</th>
                 </tr>
               </thead>
@@ -1615,7 +1819,7 @@ export function AdminPage() {
                       key={applicant.id}
                       className="h-[88px] border-t border-slate-100 text-sm text-slate-700 first:border-t-0"
                     >
-                      <td className="px-4 text-sm font-semibold text-slate-600">
+                      <td className="px-4 text-center text-sm font-semibold text-slate-600">
                         {(safeApplicantPage - 1) * APPLICANTS_PER_PAGE + index + 1}
                       </td>
                       <td className="px-4">
@@ -1626,17 +1830,30 @@ export function AdminPage() {
                           {applicant.studentId}
                         </div>
                       </td>
-                      <td className="px-4 text-sm font-semibold text-slate-700">
+                      <td className="px-4 text-center">
+                        <span className={cn(
+                          "inline-flex min-w-14 items-center justify-center rounded-full px-2.5 py-1 text-xs font-bold",
+                          applicant.applicantType === "member"
+                            ? "bg-[#EEF4FF] text-[#2B63B4]"
+                            : "bg-[#FFF4E5] text-[#B76A00]",
+                        )}>
+                          {applicant.applicantType === "member" ? "회원" : "비회원"}
+                        </span>
+                      </td>
+                      <td className="px-4 text-center text-sm font-semibold text-slate-700">
                         {applicant.major}
                       </td>
-                      <td className="px-4 text-sm font-semibold text-slate-500">
+                      <td className="whitespace-nowrap px-4 text-center text-sm font-semibold text-slate-500">
                         {applicant.submittedAt}
                       </td>
-                      <td className="px-4">
+                      <td className="px-4 text-center">
                         <div className="relative inline-flex">
                           <select
                             value={applicant.status}
-                            disabled={isFinalApplicationStatus(applicant.status)}
+                            disabled={
+                              applicant.status === "합격" ||
+                              (applicant.status === "불합격" && !isSelectedClubPresident)
+                            }
                             onChange={(e) =>
                               openStatusEdit(
                                 applicant,
@@ -1652,7 +1869,10 @@ export function AdminPage() {
                             {applicant.status === "검토중" && (
                               <option value="검토중" disabled hidden>검토중</option>
                             )}
-                            {REVIEW_DECISION_STATUSES.map((status) => (
+                            {(applicant.status === "불합격" && isSelectedClubPresident
+                              ? ["불합격", "합격"]
+                              : REVIEW_DECISION_STATUSES
+                            ).map((status) => (
                               <option key={status} value={status} className="bg-white text-slate-700">
                                 {status}
                               </option>
@@ -1886,20 +2106,26 @@ export function AdminPage() {
             </h2>
             <Button onClick={() => setIsPostDialogOpen(true)} className="h-11 w-full rounded-xl bg-[#0F1B33] px-5 text-sm font-semibold text-white hover:bg-[#111f3b] sm:w-auto">
               <SquarePen className="mr-2 size-4" />
-              게시글 작성
+              공지 작성
             </Button>
           </div>
 
-          <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200">
-            <div className="overflow-x-auto">
+          <div className="relative mt-5 overflow-hidden rounded-2xl border border-slate-200">
+            {postsScroll.canScrollPrev && (
+              <ScrollArrowButton direction="prev" onClick={() => postsScroll.scroll("prev")} label="이전 항목 보기" className="absolute left-2 top-6 -translate-y-1/2" />
+            )}
+            {postsScroll.canScrollNext && (
+              <ScrollArrowButton direction="next" onClick={() => postsScroll.scroll("next")} label="다음 항목 보기" className="absolute right-2 top-6 -translate-y-1/2" />
+            )}
+            <div ref={postsScroll.ref} className="overflow-x-auto">
               <table className="min-w-[720px] w-full table-fixed">
               <thead className="bg-[#F8FAFD]">
                 <tr className="h-12 border-b border-slate-200 text-left text-sm font-semibold text-slate-500">
                   <th className="w-[72px] px-4">선택</th>
                   <th className="px-4">제목</th>
-                  <th className="w-[96px] px-4">작성자</th>
-                  <th className="w-[108px] px-4">작성일</th>
-                  <th className="w-[72px] px-4">댓글</th>
+                  <th className="w-[96px] px-4 text-center">작성자</th>
+                  <th className="w-[108px] px-4 text-center">작성일</th>
+                  <th className="w-[72px] px-4 text-center">댓글</th>
                   <th className="w-[88px] px-4 text-center">관리</th>
                 </tr>
               </thead>
@@ -1928,11 +2154,21 @@ export function AdminPage() {
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 text-sm text-slate-600">{post.author_name}</td>
-                    <td className="px-4 text-sm text-slate-500">{formatKstDate(post.created_at)}</td>
-                    <td className="px-4 text-sm text-slate-500">{post.comment_count}</td>
+                    <td className="px-4 text-center text-sm text-slate-600">{post.author_name}</td>
+                    <td className="whitespace-nowrap px-4 text-center text-sm text-slate-500">{formatPostDate(post.created_at)}</td>
+                    <td className="px-4 text-center text-sm text-slate-500">{post.comment_count}</td>
                     <td className="px-4">
                       <div className="flex items-center justify-center gap-3 text-slate-400">
+                        {post.author_id === user?.id && (
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/board/club/${selectedClubId}/${post.id}/edit`)}
+                            className="transition-colors hover:text-slate-600"
+                            aria-label={`${post.title} 수정`}
+                          >
+                            <Pencil className="size-4" />
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => void deleteCommunityPosts([post.id])}
@@ -1967,6 +2203,30 @@ export function AdminPage() {
             </div>
           </div>
         </Card>
+      );
+    }
+
+    if (activeTab === "members") {
+      if (!selectedClubId) {
+        return (
+          <Card className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+            <h2 className="text-2xl font-bold text-foreground">회원관리</h2>
+            <p className="mt-3 text-sm text-muted-foreground">동아리 정보를 먼저 등록하면 부원을 관리할 수 있어요.</p>
+          </Card>
+        );
+      }
+      const myRole: ClubRole = managedClubs.find((club) => club.club_id === selectedClubId)?.role === "admin" ? "admin" : "president";
+      return (
+        <MemberManagement
+          key={selectedClubId}
+          clubId={selectedClubId}
+          myRole={myRole}
+          currentUserId={user?.id}
+          onPresidentTransferred={() => {
+            // 회장을 넘기면 이 동아리의 관리자 권한이 사라지므로 홈으로 보낸다.
+            void refreshManagedClubs().then(() => navigate("/", { replace: true }));
+          }}
+        />
       );
     }
 
@@ -2450,7 +2710,7 @@ export function AdminPage() {
 
       <Dialog open={isPostDialogOpen} onOpenChange={setIsPostDialogOpen}>
         <DialogContent className="sm:max-w-lg">
-          <DialogHeader><DialogTitle>게시글 작성</DialogTitle><DialogDescription>관리자가 작성한 게시글은 공지로 등록됩니다.</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>공지 작성</DialogTitle><DialogDescription>관리자가 작성한 게시글은 공지로 등록됩니다.</DialogDescription></DialogHeader>
           <div className="flex flex-col gap-3">
             <Input value={postTitle} onChange={(event) => setPostTitle(event.target.value)} placeholder="제목을 입력해주세요." />
             <Textarea value={postContent} onChange={(event) => setPostContent(event.target.value)} placeholder="내용을 입력해주세요." className="min-h-40 resize-none" />
@@ -2530,7 +2790,52 @@ export function AdminPage() {
               </div>
             </section>
           </div>
-          <DialogFooter><Button onClick={() => setSelectedApplication(null)}>닫기</Button></DialogFooter>
+          <DialogFooter className="sm:justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              className="text-destructive hover:text-destructive"
+              onClick={() => setIsDeleteApplicationOpen(true)}
+            >
+              <Trash2 className="size-4" aria-hidden />
+              신청서 삭제
+            </Button>
+            <Button onClick={() => setSelectedApplication(null)}>닫기</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 신청서 삭제 확인 */}
+      <Dialog open={isDeleteApplicationOpen} onOpenChange={setIsDeleteApplicationOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>신청서를 삭제할까요?</DialogTitle>
+            <DialogDescription>
+              {selectedApplication?.user_name}님의 신청서가 목록에서 사라지며 되돌릴 수 없습니다.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label htmlFor="application-delete-reason" className="text-sm font-semibold">삭제 사유</label>
+            <Textarea
+              id="application-delete-reason"
+              value={deleteApplicationReason}
+              onChange={(event) => setDeleteApplicationReason(event.target.value)}
+              maxLength={500}
+              placeholder="삭제 요청 사유를 입력해주세요."
+              className="min-h-24"
+            />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" disabled={isDeletingApplication} onClick={() => setIsDeleteApplicationOpen(false)}>취소</Button>
+            <Button
+              type="button"
+              disabled={isDeletingApplication || !deleteApplicationReason.trim()}
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={() => void deleteSelectedApplication()}
+            >
+              {isDeletingApplication && <Loader2 className="size-4 animate-spin" aria-hidden />} 삭제
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

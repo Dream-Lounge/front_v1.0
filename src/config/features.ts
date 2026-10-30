@@ -11,6 +11,6 @@ export const FEATURES = {
   myClubs: import.meta.env.VITE_FEATURE_MY_CLUBS !== "false",
   /** AI 추천 태그 (모집중인 동아리 AI추천 뱃지, 관심사 기반 추천 안내) */
   aiRecommend: import.meta.env.VITE_FEATURE_AI_RECOMMEND !== "false",
-  /** 동아리 커뮤니티 (/club/:id/community, 관리자 게시판 관리) */
+  /** 통합게시판 (헤더 '게시판', /board — 전체게시판·서비스/공지·동아리 게시판) 및 관리자 게시판 관리 */
   clubCommunity: import.meta.env.VITE_FEATURE_CLUB_COMMUNITY !== "false",
 } as const;

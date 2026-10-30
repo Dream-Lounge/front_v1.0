@@ -37,7 +37,7 @@ export function ClubDetail() {
   const isOwnClub = managedClubs.some((club) => club.club_id === id && club.role === "president");
 
   return (
-    <div className="container mx-auto flex w-full max-w-5xl flex-col gap-8 pb-20">
+    <div className="mx-auto flex w-full flex-col gap-8 pb-20">
       <div className="grid grid-cols-1 items-start gap-8 md:grid-cols-[minmax(280px,460px)_minmax(0,1fr)]">
         <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl bg-muted shadow-sm">
           {clubData.coverImage ? (
@@ -60,7 +60,13 @@ export function ClubDetail() {
           </section>
           <aside className="space-y-5 pt-2">
           <Card className="border-border shadow-sm">
-            <CardContent>
+            <CardContent className="flex flex-col gap-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                <span className="text-sm font-semibold text-muted-foreground">모집 기간</span>
+                <span className="text-base font-bold text-foreground">
+                  {clubData.recruitment.period || (isRecruiting ? "상시 모집" : "-")}
+                </span>
+              </div>
               <Button
                 onClick={() => navigate(`/club/${id}/apply`)}
                 disabled={!isRecruiting || isOwnClub || isAuthLoading}

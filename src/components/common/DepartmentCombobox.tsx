@@ -34,6 +34,8 @@ interface DepartmentComboboxProps {
   variant?: "default" | "signup";
   /** 목록에 없는 학과명을 검색창에서 직접 입력할 수 있는지 여부 */
   allowCustomValue?: boolean;
+  /** 트리거 버튼에 덧붙일 클래스 (높이 맞춤 등) */
+  className?: string;
 }
 
 const DEPARTMENT_NAMES = DEPARTMENTS.flatMap((collegeGroup) => collegeGroup.departments);
@@ -53,6 +55,7 @@ export function DepartmentCombobox({
   emptyText = "검색 결과가 없습니다.",
   variant = "default",
   allowCustomValue = false,
+  className,
 }: DepartmentComboboxProps) {
   const [open, setOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
@@ -85,6 +88,7 @@ export function DepartmentCombobox({
             "w-full justify-between font-normal",
             variant === "signup" && "h-11 gap-2 px-3",
             hasError && "border-destructive focus-visible:ring-destructive",
+            className,
           )}
         >
           {variant === "signup" ? (

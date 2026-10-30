@@ -7,7 +7,7 @@ const FEEDBACK_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSd0KzW-SAgVZ
 /** 테스트 운영 안내와 문의 수단을 제공하는 페이지입니다. */
 export function Support() {
   return (
-    <div className="mx-auto w-full max-w-4xl pb-16 sm:pb-20">
+    <div className="mx-auto w-full pb-16 sm:pb-20">
       <Card className="border-border/80 shadow-sm">
         <CardContent className="space-y-8 p-6 leading-relaxed sm:p-10">
           <header className="space-y-3">

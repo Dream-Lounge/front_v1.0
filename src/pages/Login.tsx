@@ -4,7 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel, FieldGroup } from "@/components/ui/field";
-import { LogIn, Eye, EyeOff, Loader2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { validators, ERROR_MESSAGES } from "@/lib/validators";
 import { useAuth } from "@/hooks/useAuth";
@@ -18,6 +28,25 @@ import { ApiRequestError, isSessionExpiredError } from "@/lib/api";
 export function Login() {
   const navigate = useNavigate();
   const location = useLocation();
+  // 지원서 작성 중 로그인 화면으로 왔다면 '비회원으로 지원하기', 아니면 '비회원으로 둘러보기'를 보여 준다.
+  const from = (location.state as { from?: string } | null)?.from;
+  const applyPath = from && /^\/club\/[^/]+\/apply$/.test(from) ? from : null;
+  const [isGuestNoticeOpen, setIsGuestNoticeOpen] = useState(false);
+
+  const continueAsGuest = () => {
+    if (applyPath) {
+      setIsGuestNoticeOpen(true);
+    } else if ((window.history.state as { idx?: number } | null)?.idx) {
+      navigate(-1);
+    } else {
+      navigate("/");
+    }
+  };
+
+  const confirmGuestApplication = () => {
+    if (!applyPath) return;
+    navigate(applyPath, { state: { guest: true, guestNoticeConsent: true } });
+  };
   const { login } = useAuth();
 
   // 폼 필드 상태
@@ -62,8 +91,9 @@ export function Login() {
     setLoginError(null);
 
     try {
-      await login(studentId, password);
-      navigate("/");
+      const loggedInUser = await login(studentId, password);
+      // 회원가입 후 첫 로그인이면 관심 분야 선택 화면을 먼저 보여 준다.
+      navigate(loggedInUser.onboardingCompleted ? "/" : "/onboarding/interests");
     } catch (error) {
       // 세션 만료는 전역 다이얼로그가 안내하므로 로그인 정보 오류로
       // 중복 표시하지 않는다.
@@ -122,7 +152,12 @@ export function Login() {
             <FieldGroup className="gap-3">
               {location.state?.signupComplete && (
                 <p className="rounded-lg bg-primary/10 p-3 text-center text-sm text-primary">
-                  회원가입이 완료되었습니다. 로그인해주세요.
+                  회원가입과 이메일 인증이 완료되었습니다. 로그인해주세요.
+                  {Number(location.state?.linkedGuestApplications ?? 0) > 0 && (
+                    <span className="mt-1 block font-semibold">
+                      비회원 지원서 {Number(location.state.linkedGuestApplications)}건이 계정에 연결되었습니다.
+                    </span>
+                  )}
                 </p>
               )}
               <Field>
@@ -207,11 +242,7 @@ export function Login() {
                 className="w-full py-6 text-base font-bold shadow-lg hover:shadow-xl transition-all mt-6"
                 disabled={isLoading}
               >
-                {isLoading ? (
-                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                ) : (
-                  <LogIn className="h-5 w-5 mr-2" />
-                )}
+                {isLoading && <Loader2 className="h-5 w-5 animate-spin" />}
                 {isLoading ? "로그인 중..." : "로그인"}
               </Button>
 
@@ -225,10 +256,55 @@ export function Login() {
                   회원가입
                 </Button>
               </p>
+
+              <div className="flex items-center gap-3 text-xs text-muted-foreground" aria-hidden>
+                <span className="h-px flex-1 bg-border" />
+                또는
+                <span className="h-px flex-1 bg-border" />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  className="w-full py-6 text-base font-semibold"
+                  onClick={continueAsGuest}
+                >
+                  {applyPath ? "비회원으로 지원하기" : "비회원으로 둘러보기"}
+                </Button>
+                {applyPath && (
+                  <p className="text-center text-xs text-muted-foreground">
+                    비회원은 제출 후 수정·삭제·임시저장·지원 상태 확인을 할 수 없어요.
+                  </p>
+                )}
+              </div>
             </FieldGroup>
           </form>
         </CardContent>
       </Card>
+      <AlertDialog open={isGuestNoticeOpen} onOpenChange={setIsGuestNoticeOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>비회원으로 지원하시겠어요?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm">
+                <p>비회원 지원은 아래 제한사항에 동의한 경우에만 이용할 수 있습니다.</p>
+                <ul className="list-disc space-y-1.5 pl-5">
+                  <li>현재 로그인되지 않은 상태로 신청합니다.</li>
+                  <li>지원서를 임시저장할 수 없습니다.</li>
+                  <li>제출 이후 지원 상태와 심사 결과를 확인할 수 없습니다.</li>
+                  <li>제출한 신청서를 직접 수정하거나 삭제할 수 없습니다.</li>
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmGuestApplication}>동의하고 지원하기</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
