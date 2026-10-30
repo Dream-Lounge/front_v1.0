@@ -64,7 +64,7 @@ button:disabled { cursor: not-allowed; }
 /* 추천 섹션에서 안내만 보여 줄 때는 우측 컬럼 없이 한 칸으로 쓴다. */
 .dream-recruiting.dream-recruiting--single { grid-template-columns: minmax(0,1fr); }
 /* AI 추천 섹션: 연한 파랑→보라 패널로 감싸 '모집중인 동아리'와 구분한다. */
-.dream-recruiting.dream-recommend { padding: 32px; border: 1px solid #dae9fa; border-radius: 24px; background: linear-gradient(135deg, #edf4fc 0%, #f3efff 60%, #fcfcfb 100%); }
+.dream-recruiting.dream-recommend { padding: 32px 56px; border: 1px solid #dae9fa; border-radius: 24px; background: linear-gradient(135deg, #edf4fc 0%, #f3efff 60%, #fcfcfb 100%); }
 .dream-ai-gradient { background: linear-gradient(90deg, #0875e1, #7c3aed); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .dream-recruiting h2 { font-size: 1.5rem; line-height: 1.4; letter-spacing: -.04em; font-weight: 700; }
 /* 위아래 여백을 같게 두어야 카드 하단이 우측 분과 목록과 정확히 맞는다. */
