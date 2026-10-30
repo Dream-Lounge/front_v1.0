@@ -41,7 +41,8 @@ export function BoardPage() {
   return (
     <div className="mx-auto flex w-full flex-col gap-6 pb-16">
       {/* 선택한 탭 이름을 제목으로, 그 옆에 탭별 설명, 오른쪽 끝에 글쓰기 (서비스/공지는 연합회·개발팀만 작성하므로 숨김) */}
-      <div className="flex items-end justify-between gap-3">
+      {/* 글쓰기 버튼이 없는 탭에서도 줄 높이를 버튼(40px)만큼 유지해 제목·탭 위치가 바뀌지 않게 한다. */}
+      <div className="flex min-h-10 items-end justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-3">
           <h1 className="shrink-0 text-2xl font-bold text-foreground">{BOARD_TABS.find((item) => item.key === tab)?.label ?? "게시판"}</h1>
           <p className="break-keep text-sm text-muted-foreground">{TAB_DESCRIPTIONS[tab]}</p>
