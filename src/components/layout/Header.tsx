@@ -38,7 +38,7 @@ export function Header() {
     return (
         <header className="dream-header w-full flex justify-center bg-background shadow-sm sticky top-0 z-50">
             {/** 한 줄 헤더: 로고 | 카테고리(네비) | 검색·유저 */}
-            <div className="dream-header-inner w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-2 flex items-center gap-2 sm:gap-4 min-h-12">
+            <div className="dream-header-inner w-full max-w-[1144px] px-4 sm:px-6 lg:px-8 py-2 flex items-center gap-2 sm:gap-4 min-h-12">
                 {/** 로고 */}
                 <Link to="/" className="dream-brand h-10 sm:h-12 shrink-0 flex items-center">
                     <img src="/logo.svg" alt="Dream Lounge Logo" className="h-full w-auto" draggable={false} />
