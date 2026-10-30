@@ -40,7 +40,14 @@ export function BoardPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 pb-16">
-      <h1 className="text-2xl font-bold text-foreground">게시판</h1>
+      {/* 제목 옆에 탭별 설명, 오른쪽 끝에 글쓰기 (서비스/공지는 연합회·개발팀만 작성하므로 숨김) */}
+      <div className="flex items-end justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-3">
+          <h1 className="shrink-0 text-2xl font-bold text-foreground">게시판</h1>
+          <p className="break-keep text-sm text-muted-foreground">{TAB_DESCRIPTIONS[tab]}</p>
+        </div>
+        {tab !== "notice" && <WriteButton onClick={goWrite} />}
+      </div>
 
       {/* 세 칸이 폭을 나눠 가져 좁은 화면에서도 잘리지 않는다. */}
       <div className="grid grid-cols-3 gap-1 rounded-xl bg-muted/80 p-1" role="tablist" aria-label="게시판 종류">
@@ -65,17 +72,10 @@ export function BoardPage() {
 
       <section role="tabpanel" className="flex flex-col gap-4">
         {tab === "club" ? (
-          <ClubBoard onWrite={goWrite} />
+          <ClubBoard />
         ) : (
-          <>
-            <div className="flex items-center justify-between gap-3">
-              <p className="break-keep text-sm text-muted-foreground">{TAB_DESCRIPTIONS[tab]}</p>
-              {/* 서비스/공지는 연합회·개발팀만 작성하므로 일반 회원에게 글쓰기를 보이지 않는다. */}
-              {tab === "all" && <WriteButton onClick={goWrite} />}
-            </div>
-            {/* TODO: 전체게시판·서비스/공지 API가 준비되면 목록 연결 */}
-            <BoardPostList posts={[]} getHref={() => "#"} emptyText="아직 등록된 글이 없습니다." />
-          </>
+          // TODO: 전체게시판·서비스/공지 API가 준비되면 목록 연결
+          <BoardPostList posts={[]} getHref={() => "#"} emptyText="아직 등록된 글이 없습니다." />
         )}
       </section>
 
@@ -97,7 +97,7 @@ function WriteButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-function ClubBoard({ onWrite }: { onWrite: () => void }) {
+function ClubBoard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -191,7 +191,6 @@ function ClubBoard({ onWrite }: { onWrite: () => void }) {
         ) : (
           <p className="text-base font-bold text-foreground">{club.club_name}</p>
         )}
-        <WriteButton onClick={onWrite} />
       </div>
 
       {posts === null ? (
