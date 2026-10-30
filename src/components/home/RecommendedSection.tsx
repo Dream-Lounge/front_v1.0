@@ -9,8 +9,8 @@ import { cn } from "@/lib/utils";
 
 /**
  * AI 추천 동아리 섹션
- * - 좌측: 관심 분야와 겹치는 동아리를 리스트로 보여 줍니다. (모집중인 동아리의 포스터 카드와 구분)
- * - 우측: 내가 고른 관심 분야를 칩으로 보여 줍니다. 누르면 그 분야로 좁혀 보고, 다시 누르면 해제합니다.
+ * - 위: 관심 분야와 겹치는 동아리를 리스트로 보여 줍니다. (모집중인 동아리의 포스터 카드와 구분)
+ * - 아래: 내가 고른 관심 분야를 칩으로 보여 줍니다. 누르면 그 분야로 좁혀 보고, 다시 누르면 해제합니다.
  */
 /** 리스트에 보여 줄 최대 동아리 수 */
 const MAX_ROWS = 5;
@@ -80,13 +80,8 @@ export function RecommendedSection() {
   );
 
   return (
-    <div
-      className={cn(
-        "dream-recruiting dream-recommend grid grid-cols-1 gap-8 lg:gap-12",
-        needsSetup ? "dream-recruiting--single" : "lg:grid-cols-[minmax(0,1fr)_24rem]",
-      )}
-    >
-      {/* 좌측 컬럼: AI 추천 동아리 (타이틀 + 가로 스크롤 카드) */}
+    <div className="dream-recruiting dream-recommend dream-recruiting--single grid grid-cols-1">
+      {/* 위: AI 추천 동아리 리스트 */}
       <div className="flex min-w-0 flex-col gap-6">
         <div className="flex items-center justify-between gap-4">
           <h2 className="flex items-center gap-2 text-2xl font-extrabold text-gray-900 sm:text-3xl">
@@ -136,7 +131,7 @@ export function RecommendedSection() {
         )}
       </div>
 
-      {/* 우측 컬럼: 내 관심 분야 */}
+      {/* 아래: 내 관심 분야 */}
       {!needsSetup && (
         <div className="flex flex-col gap-6">
           <div className="flex items-center justify-between gap-4">
