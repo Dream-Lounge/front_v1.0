@@ -1,3 +1,4 @@
+import { formatDateWithWeekday } from "@/lib/date";
 import type { ClubContactLink, ClubResponse } from "@/lib/api";
 
 /**
@@ -31,9 +32,10 @@ export type ClubApplicationData = Pick<
 >;
 
 export function mapClubResponse(club: ClubResponse): ClubData {
-  const period = club.recruit_start && club.recruit_end
-    ? `${club.recruit_start} ~ ${club.recruit_end}`
-    : club.activity_period || "상시";
+  // 모집 기간이 등록되지 않았으면 빈 문자열 (화면에서 '상시 모집' 등으로 대체)
+  const period = club.recruit_start || club.recruit_end
+    ? [club.recruit_start, club.recruit_end].map((value) => (value ? formatDateWithWeekday(value) : "")).join(" ~ ").trim()
+    : "";
 
   return {
     title: club.name,

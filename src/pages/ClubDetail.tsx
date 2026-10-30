@@ -58,7 +58,13 @@ export function ClubDetail() {
           </section>
           <aside className="space-y-5 pt-2">
           <Card className="border-border shadow-sm">
-            <CardContent>
+            <CardContent className="flex flex-col gap-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                <span className="text-sm font-semibold text-muted-foreground">모집 기간</span>
+                <span className="text-base font-bold text-foreground">
+                  {clubData.recruitment.period || (isRecruiting ? "상시 모집" : "-")}
+                </span>
+              </div>
               <Button
                 onClick={() => navigate(`/club/${id}/apply`)}
                 disabled={!isRecruiting || isOwnClub || isAuthLoading}
