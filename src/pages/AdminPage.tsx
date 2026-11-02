@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   PlusCircle,
@@ -29,6 +29,10 @@ import {
   Users,
   MessageSquare,
   Pencil,
+  Upload,
+  CalendarDays,
+  CirclePause,
+  Infinity as InfinityIcon,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -36,7 +40,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Dialog,
@@ -65,6 +68,24 @@ import { FEATURES } from "@/config/features";
 import { formatPostDate } from "@/lib/board";
 import { MemberManagement, type ClubRole } from "@/components/admin/MemberManagement";
 import { useNavigate } from "react-router-dom";
+
+/** 동아리 정보 '추가 정보'의 펼침 항목 */
+const CLUB_EXTRA_KEYS = ["contacts"] as const;
+type ClubExtraKey = (typeof CLUB_EXTRA_KEYS)[number];
+
+/** 동아리 정보의 모집 방식: 상시 모집(날짜 없음) / 모집중(기간 지정) / 모집 마감 */
+type RecruitMode = "always" | "recruiting" | "closed";
+
+function toRecruitMode(isRecruiting: boolean, start?: string | null, end?: string | null): RecruitMode {
+  if (!isRecruiting) return "closed";
+  return start || end ? "recruiting" : "always";
+}
+
+const RECRUIT_MODE_OPTIONS = [
+  { value: "always", label: "상시 모집", icon: InfinityIcon },
+  { value: "recruiting", label: "모집중", icon: CalendarDays },
+  { value: "closed", label: "모집 마감", icon: CirclePause },
+] as const satisfies ReadonlyArray<{ value: RecruitMode; label: string; icon: typeof CalendarDays }>;
 
 type AdminTab =
   | "club-register"
@@ -257,6 +278,11 @@ export function AdminPage() {
   const [newContactValue, setNewContactValue] = useState("");
   const [clubImageUrl, setClubImageUrl] = useState("");
   const [clubIsRecruiting, setClubIsRecruiting] = useState(false);
+  const [recruitMode, setRecruitMode] = useState<RecruitMode>("closed");
+  // 추가 정보는 항목별로 펼친다. (처음엔 모두 접힘)
+  const [openExtras, setOpenExtras] = useState<ClubExtraKey[]>([]);
+  // 등록된 대표 이미지를 크게 보고 변경·삭제하는 팝업
+  const [isCoverDialogOpen, setIsCoverDialogOpen] = useState(false);
   // 모집 기간 (input[type=date] 값 그대로 "YYYY-MM-DD")
   const [clubRecruitStart, setClubRecruitStart] = useState("");
   const [clubRecruitEnd, setClubRecruitEnd] = useState("");
@@ -449,6 +475,7 @@ export function AdminPage() {
         setClubDetailDescription(club.description ?? "");
         setClubImageUrl(club.image_url ?? "");
         setClubIsRecruiting(club.is_recruiting);
+        setRecruitMode(toRecruitMode(club.is_recruiting, club.recruit_start, club.recruit_end));
         setClubRecruitStart(club.recruit_start?.slice(0, 10) ?? "");
         setClubRecruitEnd(club.recruit_end?.slice(0, 10) ?? "");
         const savedContactLinks = club.contact_links?.length
@@ -980,8 +1007,20 @@ export function AdminPage() {
       toast.error("분과를 선택해주세요.");
       return;
     }
-    if (Boolean(clubRecruitStart) !== Boolean(clubRecruitEnd)) {
-      toast.error("모집 시작일과 마감일을 모두 입력해주세요.");
+    if (!clubImageUrl) {
+      toast.error("대표 이미지를 업로드해주세요.");
+      return;
+    }
+    if (!clubTagline.trim()) {
+      toast.error("동아리 소개를 입력해주세요.");
+      return;
+    }
+    if (recruitMode === "recruiting" && (!clubRecruitStart || !clubRecruitEnd)) {
+      toast.error("모집 시작일과 종료일을 모두 입력해주세요.");
+      return;
+    }
+    if (recruitMode === "closed" && Boolean(clubRecruitStart) !== Boolean(clubRecruitEnd)) {
+      toast.error("모집 시작일과 종료일을 모두 입력해주세요.");
       return;
     }
     if (clubRecruitStart && clubRecruitEnd && clubRecruitEnd < clubRecruitStart) {
@@ -1016,9 +1055,9 @@ export function AdminPage() {
           image_url: photo.url,
           caption: photo.caption.trim() || null,
         })),
-        is_recruiting: clubIsRecruiting,
-        recruit_start: clubRecruitStart || null,
-        recruit_end: clubRecruitEnd || null,
+        is_recruiting: recruitMode !== "closed",
+        recruit_start: recruitMode === "always" ? null : clubRecruitStart || null,
+        recruit_end: recruitMode === "always" ? null : clubRecruitEnd || null,
         tags: tags.map((tag) => ({
           tag_key: "custom",
           tag_value: tag.replace(/^#/, "").trim(),
@@ -1034,6 +1073,7 @@ export function AdminPage() {
       }
       setClubImageUrl(updatedClub.image_url ?? "");
       setClubIsRecruiting(updatedClub.is_recruiting);
+      setRecruitMode(toRecruitMode(updatedClub.is_recruiting, updatedClub.recruit_start, updatedClub.recruit_end));
       const persistedContactLinks = updatedClub.contact_links?.length
         ? updatedClub.contact_links
         : normalizedContactLinks;
@@ -1264,224 +1304,322 @@ export function AdminPage() {
 
   const renderMainContent = () => {
     if (activeTab === "club-register") {
+      const sectionClass = "rounded-2xl border border-slate-200 bg-white p-4 sm:p-5";
+      const labelClass = "text-sm font-semibold text-slate-700";
       return (
         <Card className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
           <h2 className="text-2xl align-bottom font-bold text-foreground">
             동아리 정보
           </h2>
-          <div className="mt-0 border-t border-slate-200 pt-5">
-            <div>
-              <div>
-                <h3 className="text-base font-bold text-slate-800">
-                  동아리 명 <span className="text-red-500">*</span>
-                </h3>
-                <Input
-                  value={clubName}
-                  onChange={(e) => setClubName(e.target.value)}
-                  placeholder="예: CPR"
-                  className="mt-3 h-10 bg-white"
-                />
-              </div>
-            </div>
-
-            <div className="mt-5">
-              <h3 id="club-division-label" className="text-base font-bold text-slate-800">
-                분과 <span className="text-red-500">*</span>
-              </h3>
-              <div className="relative mt-3 w-full max-w-[280px]">
-                <select
-                  id="club-division"
-                  aria-labelledby="club-division-label"
-                  value={clubCategory}
-                  onChange={(event) => setClubCategory(event.target.value)}
-                  className={cn(
-                    "h-10 w-full cursor-pointer appearance-none rounded-md border border-input bg-white px-3 pr-9 text-sm outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
-                    !clubCategory && "text-muted-foreground",
-                  )}
-                >
-                  <option value="" disabled>
-                    분과를 선택해주세요
-                  </option>
-                  {CLUB_DIVISION_KEYS.map((division) => (
-                    <option key={division} value={division} className="text-foreground">
-                      {division}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown
-                  className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-                  aria-hidden
-                />
-              </div>
-            </div>
-
-            <div className="mt-5">
-              <h3 className="text-base font-bold text-slate-800">
-                대표 이미지{" "}
-                <span className="text-sm font-medium text-slate-400">(권장: 1920×1080px)</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => imageInputRef.current?.click()}
-                className="mt-3 flex aspect-[3/4] w-full max-w-[280px] flex-col items-center justify-center overflow-hidden rounded-xl border border-dashed border-slate-300 bg-slate-50 text-slate-500 transition-colors hover:bg-slate-100"
-              >
-                {clubImageUrl ? <img src={clubImageUrl} alt="동아리 대표" className="h-full w-full rounded-xl object-cover" /> : <><ImageIcon className="mb-2 size-8 text-slate-400" /><span className="text-sm font-medium">클릭하여 이미지 업로드</span></>}
-              </button>
-              <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadImage(file, "cover"); event.target.value = ""; }} />
-            </div>
-
-            <div className="mt-5">
-              <h3 className="text-base font-bold text-slate-800">
-                동아리 소개글
-              </h3>
-              <Textarea
-                value={clubTagline}
-                onChange={(e) => setClubTagline(e.target.value)}
-                maxLength={2000}
-                placeholder="동아리를 소개하는 글을 입력해주세요."
-                className="mt-3 min-h-[120px] resize-y bg-white"
-              />
-            </div>
-
-            <section className="mt-5">
-              <h3 className="text-base font-bold text-slate-800">
-                문의 링크 또는 번호
-              </h3>
-
-              <div className="mt-3 flex items-center gap-2">
-                <Input
-                  value={newContactValue}
-                  onChange={(e) => setNewContactValue(e.target.value)}
-                  maxLength={2048}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      addContactLink();
-                    }
-                  }}
-                  placeholder="이메일, 전화번호 또는 SNS 주소"
-                  className="h-10 flex-1 bg-white"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={addContactLink}
-                  className="h-10 shrink-0"
-                >
-                  <Plus className="mr-1 size-4" />
-                  링크 추가
-                </Button>
+          <div className="mt-1 flex flex-col gap-4 border-t border-slate-200 pt-5">
+            {/* 기본 정보 (필수) */}
+            <section className={sectionClass} aria-labelledby="club-basic-title">
+              <div className="flex items-center justify-between gap-3">
+                <h3 id="club-basic-title" className="text-base font-bold text-slate-900">기본 정보</h3>
+                <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600">필수</span>
               </div>
 
-              <div className="mt-3 flex flex-col gap-2">
-                {contactLinks.map((link) => (
-                  // 모바일: [이름][삭제] / [내용] 두 줄로 나눠 내용 칸이 좁아지지 않게 한다.
-                  <div
-                    key={link.id}
-                    className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 p-2 sm:flex-nowrap sm:border-0 sm:p-0"
-                  >
-                    <Input
-                      value={link.label}
-                      onChange={(e) =>
-                        updateContactLink(link.id, "label", e.target.value)
-                      }
-                      placeholder="예: 인스타그램 또는 회장 연락처"
-                      aria-label="연락처 이름"
-                      className="h-10 min-w-0 flex-1 bg-white sm:w-40 sm:flex-none"
-                    />
-                    <Input
-                      value={link.value}
-                      onChange={(e) =>
-                        updateContactLink(link.id, "value", e.target.value)
-                      }
-                      onBlur={() => normalizeContactLink(link.id)}
-                      maxLength={2048}
-                      placeholder="이메일, 전화번호 또는 링크"
-                      aria-label="연락처 내용"
-                      className="order-last h-10 basis-full bg-white sm:order-none sm:basis-auto sm:flex-1"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeContactLink(link.id)}
-                      aria-label="연락처 삭제"
-                      className="shrink-0 rounded-md p-2 text-slate-400 transition-colors hover:text-destructive"
+              <div className="mt-4 flex flex-col gap-5">
+                <div>
+                  <label htmlFor="club-name" className={labelClass}>
+                    동아리 이름 <span className="text-red-500" aria-hidden>*</span>
+                  </label>
+                  <Input
+                    id="club-name"
+                    value={clubName}
+                    onChange={(e) => setClubName(e.target.value)}
+                    placeholder="예: CPR"
+                    aria-required
+                    className="mt-2 h-11 bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="club-division" className={labelClass}>
+                    분과 <span className="text-red-500" aria-hidden>*</span>
+                  </label>
+                  <div className="relative mt-2 w-full sm:max-w-xs">
+                    <select
+                      id="club-division"
+                      value={clubCategory}
+                      onChange={(event) => setClubCategory(event.target.value)}
+                      aria-required
+                      className={cn(
+                        "h-11 w-full cursor-pointer appearance-none rounded-md border border-input bg-white px-3 pr-10 text-sm outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                        !clubCategory && "text-muted-foreground",
+                      )}
                     >
-                      <Trash2 className="size-4" />
-                    </button>
+                      <option value="" disabled>
+                        분과를 선택해주세요
+                      </option>
+                      {CLUB_DIVISION_KEYS.map((division) => (
+                        <option key={division} value={division} className="text-foreground">
+                          {division}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown
+                      className="pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                      aria-hidden
+                    />
                   </div>
-                ))}
-              </div>
-            </section>
+                </div>
 
-            <section className="mt-5">
-              <div className="flex items-center gap-1.5">
-                <h3 id="club-recruit-period-label" className="text-base font-bold text-slate-800">
-                  모집 기간
-                </h3>
-                {/* 마우스를 올리거나 키보드로 포커스하면 안내 말풍선을 보여 준다. */}
-                <span className="group relative inline-flex">
+                <div>
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                    <p className={labelClass}>
+                      대표 이미지 <span className="text-red-500" aria-hidden>*</span>
+                    </p>
+                    <span className="text-xs font-normal text-slate-500">JPG·PNG·WEBP, 권장 크기 1920×1080px</span>
+                  </div>
+                  {/* 이미지가 없으면 바로 파일 선택, 있으면 팝업에서 크게 보고 변경·삭제한다. */}
                   <button
                     type="button"
-                    aria-label="모집 기간 안내"
-                    aria-describedby="club-recruit-period-tip"
-                    className="inline-flex size-5 items-center justify-center rounded-full text-slate-400 transition-colors hover:text-slate-600 focus-visible:text-slate-600"
+                    onClick={() => (clubImageUrl ? setIsCoverDialogOpen(true) : imageInputRef.current?.click())}
+                    className="mt-2 flex h-12 w-full items-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 text-left text-sm font-semibold text-slate-600 transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
                   >
-                    <Info className="size-4" aria-hidden />
+                    {clubImageUrl ? (
+                      <>
+                        <ImageIcon className="size-5 shrink-0" aria-hidden />
+                        <span className="min-w-0 flex-1 truncate">등록된 이미지 보기 · 변경</span>
+                        <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">등록됨</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="size-5 shrink-0" aria-hidden />
+                        <span className="min-w-0 flex-1 truncate">이미지 업로드</span>
+                      </>
+                    )}
                   </button>
-                  <span
-                    id="club-recruit-period-tip"
-                    role="tooltip"
-                    className="pointer-events-none absolute top-1/2 left-full z-20 ml-2 w-max max-w-[220px] -translate-y-1/2 break-keep rounded-md bg-slate-900 px-3 py-2 text-xs leading-relaxed text-white opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
-                  >
-                    미설정 시 동아리 상세 페이지에 &lsquo;상시&nbsp;모집&rsquo;으로 표시됩니다.
-                  </span>
-                </span>
-              </div>
-              <div className="mt-3 flex flex-wrap items-center gap-2" role="group" aria-labelledby="club-recruit-period-label">
-                <Input
-                  type="date"
-                  aria-label="모집 시작일"
-                  value={clubRecruitStart}
-                  max={clubRecruitEnd || undefined}
-                  onChange={(event) => setClubRecruitStart(event.target.value)}
-                  className="h-10 w-full bg-white sm:w-44"
-                />
-                <span className="hidden text-slate-400 sm:inline" aria-hidden>~</span>
-                <Input
-                  type="date"
-                  aria-label="모집 마감일"
-                  value={clubRecruitEnd}
-                  min={clubRecruitStart || undefined}
-                  onChange={(event) => setClubRecruitEnd(event.target.value)}
-                  className="h-10 w-full bg-white sm:w-44"
-                />
+                  <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadImage(file, "cover"); event.target.value = ""; }} />
+                </div>
+
+                <div>
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                    <label htmlFor="club-intro" className={labelClass}>
+                      동아리 소개 <span className="text-red-500" aria-hidden>*</span>
+                    </label>
+                    <span className="text-xs font-normal text-slate-500">동아리 상세 페이지의 &lsquo;동아리 소개&rsquo;에 표시됩니다.</span>
+                  </div>
+                  <Textarea
+                    id="club-intro"
+                    value={clubTagline}
+                    onChange={(e) => setClubTagline(e.target.value)}
+                    maxLength={2000}
+                    placeholder="동아리를 소개하는 글을 입력해주세요."
+                    aria-required
+                    className="mt-2 min-h-[120px] resize-y bg-white"
+                  />
+                  <p className="mt-1.5 text-right text-xs tabular-nums text-slate-500">{clubTagline.length} / 2000</p>
+                </div>
               </div>
             </section>
 
-            <section className="mt-5">
-              <h3 id="club-recruiting-label" className="text-base font-bold text-slate-800">
-                모집 상태
-              </h3>
-              <div className="mt-3 flex items-center gap-3">
-                <Switch
-                  id="club-recruiting"
-                  aria-labelledby="club-recruiting-label"
-                  checked={clubIsRecruiting}
-                  onCheckedChange={setClubIsRecruiting}
-                />
-                <label
-                  htmlFor="club-recruiting"
+            {/* 모집 설정 */}
+            <section className={sectionClass} aria-labelledby="club-recruit-title">
+              <div className="flex items-center justify-between gap-3">
+                <h3 id="club-recruit-title" className="text-base font-bold text-slate-900">모집 설정</h3>
+                <span
                   className={cn(
-                    "cursor-pointer text-sm font-semibold",
-                    clubIsRecruiting ? "text-primary" : "text-slate-500",
+                    "shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold",
+                    recruitMode === "closed" ? "bg-slate-100 text-slate-500" : "bg-primary/10 text-primary",
                   )}
                 >
-                  {clubIsRecruiting ? "모집중" : "모집 마감"}
-                </label>
+                  {recruitMode === "closed" ? "모집 마감" : recruitMode === "always" ? "상시 모집" : "모집중"}
+                </span>
               </div>
+              <div role="radiogroup" aria-labelledby="club-recruit-title" className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
+                {RECRUIT_MODE_OPTIONS.map(({ value, label, icon: Icon }) => {
+                  const isSelected = recruitMode === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      onClick={() => setRecruitMode(value)}
+                      className={cn(
+                        "flex flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-3.5 text-sm font-semibold transition-colors",
+                        isSelected
+                          ? "border-primary bg-primary/5 text-primary"
+                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+                      )}
+                    >
+                      <Icon className="size-5" aria-hidden />
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              {recruitMode === "recruiting" && (
+                <div className="mt-4 grid gap-3 sm:grid-cols-2" role="group" aria-label="모집 기간">
+                  <div>
+                    <label htmlFor="club-recruit-start" className="text-sm font-semibold text-slate-500">시작일</label>
+                    <div className="relative mt-1.5">
+                      <CalendarDays className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-slate-500" aria-hidden />
+                      <Input
+                        id="club-recruit-start"
+                        type="date"
+                        value={clubRecruitStart}
+                        max={clubRecruitEnd || undefined}
+                        onChange={(event) => setClubRecruitStart(event.target.value)}
+                        className="h-11 w-full cursor-pointer rounded-xl bg-white pr-10 pl-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
+                      />
+                      <ChevronDown className="pointer-events-none absolute top-1/2 right-3.5 size-4 -translate-y-1/2 text-slate-500" aria-hidden />
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="club-recruit-end" className="text-sm font-semibold text-slate-500">종료일</label>
+                    <div className="relative mt-1.5">
+                      <CalendarDays className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-slate-500" aria-hidden />
+                      <Input
+                        id="club-recruit-end"
+                        type="date"
+                        value={clubRecruitEnd}
+                        min={clubRecruitStart || undefined}
+                        onChange={(event) => setClubRecruitEnd(event.target.value)}
+                        className="h-11 w-full cursor-pointer rounded-xl bg-white pr-10 pl-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
+                      />
+                      <ChevronDown className="pointer-events-none absolute top-1/2 right-3.5 size-4 -translate-y-1/2 text-slate-500" aria-hidden />
+                    </div>
+                  </div>
+                </div>
+              )}
             </section>
 
-            <div className="mt-8 flex justify-end">
+            {/* 추가 정보 (선택): 항목마다 펼쳐서 입력한다. */}
+            <section className={sectionClass} aria-labelledby="club-extra-title">
+              <div className="flex items-center justify-between gap-3">
+                <h3 id="club-extra-title" className="text-base font-bold text-slate-900">추가 정보</h3>
+                <button
+                  type="button"
+                  onClick={() => setOpenExtras(openExtras.length === CLUB_EXTRA_KEYS.length ? [] : [...CLUB_EXTRA_KEYS])}
+                  className="shrink-0 text-xs font-semibold text-slate-500 transition-colors hover:text-primary"
+                >
+                  {openExtras.length === CLUB_EXTRA_KEYS.length ? "모두 접기" : "모두 펼치기"}
+                </button>
+              </div>
+
+              <ul className="mt-3 divide-y divide-slate-200 border-t border-slate-200">
+                {([
+                  {
+                    key: "contacts",
+                    icon: Link2,
+                    title: "문의처 및 SNS",
+                    description: "연락처, 인스타그램, 외부 링크",
+                    count: contactLinks.length ? `${contactLinks.length}개` : null,
+                    body: (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            value={newContactValue}
+                            onChange={(e) => setNewContactValue(e.target.value)}
+                            maxLength={2048}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                addContactLink();
+                              }
+                            }}
+                            placeholder="이메일, 전화번호 또는 SNS 주소"
+                            className="h-10 flex-1 bg-white"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={addContactLink}
+                            aria-label="문의처 추가"
+                            className="size-10 shrink-0 p-0 has-[>svg]:px-0"
+                          >
+                            <Plus className="size-5" aria-hidden />
+                          </Button>
+                        </div>
+
+                        <div className="mt-3 flex flex-col gap-2">
+                          {contactLinks.map((link) => (
+                            // 모바일: [이름][삭제] / [내용] 두 줄로 나눠 내용 칸이 좁아지지 않게 한다.
+                            <div
+                              key={link.id}
+                              className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 p-2 sm:flex-nowrap sm:border-0 sm:p-0"
+                            >
+                              <Input
+                                value={link.label}
+                                onChange={(e) =>
+                                  updateContactLink(link.id, "label", e.target.value)
+                                }
+                                placeholder="예: 인스타그램 또는 회장 연락처"
+                                aria-label="연락처 이름"
+                                className="h-10 min-w-0 flex-1 bg-white sm:w-40 sm:flex-none"
+                              />
+                              <Input
+                                value={link.value}
+                                onChange={(e) =>
+                                  updateContactLink(link.id, "value", e.target.value)
+                                }
+                                onBlur={() => normalizeContactLink(link.id)}
+                                maxLength={2048}
+                                placeholder="이메일, 전화번호 또는 링크"
+                                aria-label="연락처 내용"
+                                className="order-last h-10 basis-full bg-white sm:order-none sm:basis-auto sm:flex-1"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => removeContactLink(link.id)}
+                                aria-label="연락처 삭제"
+                                className="shrink-0 rounded-md p-2 text-slate-400 transition-colors hover:text-destructive"
+                              >
+                                <Trash2 className="size-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ),
+                  },
+                ] satisfies Array<{ key: ClubExtraKey; icon: typeof Link2; title: string; description: string; count: string | null; body: ReactNode }>).map(({ key, icon: Icon, title, description, count, body }) => {
+                  const isOpen = openExtras.includes(key);
+                  return (
+                    <li key={key}>
+                      <button
+                        type="button"
+                        onClick={() => setOpenExtras((prev) => (isOpen ? prev.filter((item) => item !== key) : [...prev, key]))}
+                        aria-expanded={isOpen}
+                        aria-controls={`club-extra-${key}`}
+                        className="flex w-full items-center gap-3 py-4 text-left"
+                      >
+                        <Icon className="size-5 shrink-0 text-primary" aria-hidden />
+                        <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                          <span className="text-sm font-bold text-slate-900">{title}</span>
+                          {/* 세부 설명은 인포 아이콘에 마우스를 올리면 말풍선으로 보여 준다. */}
+                          <span className="group/info relative inline-flex">
+                            <Info className="size-4 text-slate-400 transition-colors group-hover/info:text-slate-600" aria-hidden />
+                            <span
+                              role="tooltip"
+                              className="pointer-events-none absolute top-1/2 left-full z-20 ml-2 hidden w-max max-w-[min(220px,calc(100vw-10rem))] -translate-y-1/2 break-keep rounded-md bg-slate-900 px-3 py-2 text-xs font-normal leading-relaxed text-white shadow-md group-hover/info:block"
+                            >
+                              {description}
+                            </span>
+                          </span>
+                          <span className="sr-only">{description}</span>
+                        </span>
+                        {count && <span className="shrink-0 text-sm font-semibold text-primary">{count}</span>}
+                        <ChevronDown
+                          className={cn("size-5 shrink-0 text-slate-400 transition-transform", isOpen && "rotate-180")}
+                          aria-hidden
+                        />
+                      </button>
+                      {isOpen && (
+                        <div id={`club-extra-${key}`} className="pb-5 sm:pl-8">
+                          {body}
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+
+            <div className="mt-2 flex justify-end">
               <Button onClick={() => void saveClub()} className="h-10 w-full rounded-lg px-5 sm:w-auto">
                 저장
               </Button>
@@ -2546,6 +2684,42 @@ export function AdminPage() {
           <DialogFooter>
             <Button type="button" onClick={() => setIsPreviewOpen(false)}>
               닫기
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 대표 이미지 보기 · 변경 */}
+      <Dialog open={isCoverDialogOpen} onOpenChange={setIsCoverDialogOpen}>
+        <DialogContent className="gap-5 sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>대표 이미지</DialogTitle>
+            <DialogDescription>바꾼 이미지는 동아리 정보의 &lsquo;저장&rsquo;을 눌러야 반영됩니다.</DialogDescription>
+          </DialogHeader>
+          <div className="flex max-h-[60vh] items-center justify-center overflow-hidden rounded-xl bg-slate-50">
+            {clubImageUrl ? (
+              <img src={clubImageUrl} alt="동아리 대표 이미지" className="max-h-[60vh] w-full object-contain" />
+            ) : (
+              <p className="py-16 text-sm text-slate-500">등록된 이미지가 없습니다.</p>
+            )}
+          </div>
+          <DialogFooter className="gap-2 sm:justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              className="text-destructive hover:text-destructive"
+              disabled={!clubImageUrl}
+              onClick={() => {
+                setClubImageUrl("");
+                setIsCoverDialogOpen(false);
+              }}
+            >
+              <Trash2 className="size-4" aria-hidden />
+              삭제
+            </Button>
+            <Button type="button" onClick={() => imageInputRef.current?.click()}>
+              <Upload className="size-4" aria-hidden />
+              이미지 변경
             </Button>
           </DialogFooter>
         </DialogContent>
