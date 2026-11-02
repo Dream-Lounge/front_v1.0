@@ -255,7 +255,7 @@ export function ClubsPage() {
               : `아직 ${activeFilterLabel} 분과에 등록된 동아리가 없습니다.`}
           </p>
         ) : view === "card" ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {filtered.map((club) => (
               <ClubCard
                 key={club.id}
