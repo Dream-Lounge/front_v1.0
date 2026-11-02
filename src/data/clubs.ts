@@ -12,7 +12,8 @@ export interface ClubData {
   description: string;
   longDescription: string;
   coverImage?: string;
-  activities: { id: number; title: string; image: string }[];
+  /** title: 대체 텍스트용 이름, caption: 관리자가 적은 사진 설명(없을 수 있음) */
+  activities: { id: number; title: string; image: string; caption?: string }[];
   contacts: ClubContactLink[];
   recruitment: {
     status: string;
@@ -51,6 +52,7 @@ export function mapClubResponse(club: ClubResponse): ClubData {
             id: index + 1,
             title: item.caption || `${club.name} 활동 ${index + 1}`,
             image: item.image_url,
+            caption: item.caption || undefined,
           }))
       : club.activity_images.map((image, index) => ({
           id: index + 1,
