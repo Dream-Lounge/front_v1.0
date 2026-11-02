@@ -259,7 +259,6 @@ export function Signup() {
 
               {apiError && <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{apiError}</div>}
               <Button type="submit" size="lg" disabled={!emailVerified || isLoading} className="mt-2 h-12 w-full rounded-lg text-base font-semibold shadow-sm">회원가입</Button>
-              {!emailVerified && <p className="-mt-2 text-center text-xs text-muted-foreground">학교 이메일 인증을 완료하면 회원가입 버튼이 활성화됩니다.</p>}
               <Button type="button" variant="outline" size="lg" className="h-12 w-full rounded-lg text-base font-medium" onClick={() => navigate("/login")}>로그인</Button>
             </FieldGroup>
           </form>
