@@ -29,6 +29,8 @@ import {
   Users,
   MessageSquare,
   Pencil,
+  Images,
+  Tags,
   Upload,
   CalendarDays,
   CirclePause,
@@ -70,8 +72,12 @@ import { MemberManagement, type ClubRole } from "@/components/admin/MemberManage
 import { useNavigate } from "react-router-dom";
 
 /** 동아리 정보 '추가 정보'의 펼침 항목 */
-const CLUB_EXTRA_KEYS = ["contacts"] as const;
+const CLUB_EXTRA_KEYS = ["photos", "tags", "contacts"] as const;
 type ClubExtraKey = (typeof CLUB_EXTRA_KEYS)[number];
+
+/** 동아리 태그 최대 개수와 태그 하나의 최대 글자 수 */
+const MAX_TAGS = 10;
+const MAX_TAG_LENGTH = 20;
 
 /** 동아리 정보의 모집 방식: 상시 모집(날짜 없음) / 모집중(기간 지정) / 모집 마감 */
 type RecruitMode = "always" | "recruiting" | "closed";
@@ -360,8 +366,29 @@ export function AdminPage() {
     setActivityPhotos((prev) => prev.filter((photo) => photo.id !== id));
   };
 
-  /** 상세페이지 태그 (최대 MAX_TAGS개) */
+  /** 동아리 태그 (최대 MAX_TAGS개, '#' 없이 입력해도 붙여서 보관) */
   const [tags, setTags] = useState<string[]>([]);
+  const [newTag, setNewTag] = useState("");
+
+  const addTag = () => {
+    const value = newTag.trim().replace(/^#+/, "").replace(/\s+/g, "");
+    if (!value) return;
+    if (tags.length >= MAX_TAGS) {
+      toast.error(`태그는 최대 ${MAX_TAGS}개까지 추가할 수 있습니다.`);
+      return;
+    }
+    const tag = `#${value}`;
+    if (tags.includes(tag)) {
+      toast.error("이미 추가한 태그입니다.");
+      return;
+    }
+    setTags((prev) => [...prev, tag]);
+    setNewTag("");
+  };
+
+  const removeTag = (tag: string) => {
+    setTags((prev) => prev.filter((item) => item !== tag));
+  };
   const [applicants, setApplicants] = useState<SubmittedApplication[]>([]);
   const [applicantQuery, setApplicantQuery] = useState("");
   const [applicantStatusFilter, setApplicantStatusFilter] = useState<ApplicantStatusFilter>("all");
@@ -1502,6 +1529,109 @@ export function AdminPage() {
 
               <ul className="mt-3 divide-y divide-slate-200 border-t border-slate-200">
                 {([
+                  {
+                    key: "photos",
+                    icon: Images,
+                    title: "활동 사진",
+                    description: "동아리 활동 갤러리 · 사진마다 짧은 설명 가능",
+                    count: activityPhotos.length ? `${activityPhotos.length}장` : null,
+                    body: (
+                      <>
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                          {activityPhotos.map((photo, index) => (
+                            <div key={photo.id} className="flex min-w-0 flex-col gap-1.5">
+                              <div className="relative">
+                                <img
+                                  src={photo.url}
+                                  alt={photo.caption || `활동 사진 ${index + 1}`}
+                                  className="aspect-[4/3] w-full rounded-xl border border-slate-200 object-cover"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => removeActivityPhoto(photo.id)}
+                                  aria-label={`활동 사진 ${index + 1} 삭제`}
+                                  className="absolute top-1.5 right-1.5 inline-flex size-6 items-center justify-center rounded-full bg-white/90 text-slate-500 shadow-sm transition-colors hover:text-destructive"
+                                >
+                                  <X className="size-3.5" aria-hidden />
+                                </button>
+                              </div>
+                              <Input
+                                value={photo.caption}
+                                onChange={(e) => updatePhotoCaption(photo.id, e.target.value)}
+                                placeholder="설명 (선택)"
+                                maxLength={30}
+                                aria-label={`활동 사진 ${index + 1} 설명`}
+                                className="h-9 bg-white px-2.5 text-xs sm:text-xs"
+                              />
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => activityInputRef.current?.click()}
+                            className="flex aspect-[4/3] w-full flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-sm font-semibold text-slate-600 transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
+                          >
+                            <Plus className="size-5" aria-hidden />
+                            사진 추가
+                          </button>
+                        </div>
+                        <input ref={activityInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadImage(file, "activity"); event.target.value = ""; }} />
+                      </>
+                    ),
+                  },
+                  {
+                    key: "tags",
+                    icon: Tags,
+                    title: "태그",
+                    description: `관심사 및 활동 키워드 · 최대 ${MAX_TAGS}개`,
+                    count: tags.length ? `${tags.length}개` : null,
+                    body: (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            id="club-tag-input"
+                            aria-label="태그 입력"
+                            value={newTag}
+                            onChange={(e) => setNewTag(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                                e.preventDefault();
+                                addTag();
+                              }
+                            }}
+                            maxLength={MAX_TAG_LENGTH}
+                            placeholder="예: 코딩, 초보환영"
+                            className="h-10 flex-1 bg-white"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={addTag}
+                            aria-label="태그 추가"
+                            className="size-10 shrink-0 p-0 has-[>svg]:px-0"
+                          >
+                            <Plus className="size-5" aria-hidden />
+                          </Button>
+                        </div>
+                        {tags.length > 0 && (
+                          <ul className="mt-3 flex flex-wrap gap-2">
+                            {tags.map((tag) => (
+                              <li key={tag} className="inline-flex items-center gap-1 rounded-full bg-primary/10 py-1 pr-1.5 pl-3 text-sm font-semibold text-primary">
+                                {tag}
+                                <button
+                                  type="button"
+                                  onClick={() => removeTag(tag)}
+                                  aria-label={`${tag} 태그 삭제`}
+                                  className="inline-flex size-5 items-center justify-center rounded-full transition-colors hover:bg-primary/15"
+                                >
+                                  <X className="size-3.5" aria-hidden />
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </>
+                    ),
+                  },
                   {
                     key: "contacts",
                     icon: Link2,
