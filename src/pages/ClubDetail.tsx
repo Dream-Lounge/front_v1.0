@@ -56,7 +56,19 @@ export function ClubDetail() {
         </div>
 
         <main className="space-y-5">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">{clubData.title}</h1>
+          <div className="space-y-3">
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">{clubData.title}</h1>
+            {/* 관리자 페이지 '추가 정보 > 태그'에서 등록한 태그 */}
+            {clubData.tags.length > 0 && (
+              <ul className="flex flex-wrap gap-2" aria-label="동아리 태그">
+                {clubData.tags.map((tag) => (
+                  <li key={tag} className="rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
+                    {tag}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
           <section className="space-y-3">
             <h2 className="text-xl font-bold">동아리 소개</h2>
             <p className="whitespace-pre-line text-base leading-relaxed text-muted-foreground">
