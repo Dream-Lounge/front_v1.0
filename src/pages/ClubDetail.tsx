@@ -61,7 +61,7 @@ export function ClubDetail() {
           <aside className="space-y-5 pt-2">
           <Card className="border-border shadow-sm">
             <CardContent className="flex flex-col gap-4">
-              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <div className="flex flex-wrap items-baseline justify-center gap-x-3 gap-y-1 text-center">
                 <span className="text-sm font-semibold text-muted-foreground">모집 기간</span>
                 <span className="text-base font-bold text-foreground">
                   {clubData.recruitment.period || (isRecruiting ? "상시 모집" : "-")}
