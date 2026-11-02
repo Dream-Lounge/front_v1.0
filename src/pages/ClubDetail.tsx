@@ -5,8 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { ClubQaCard } from "@/components/clubs/ClubQaCard";
-import { FEATURES } from "@/config/features";
 import { mapClubResponse, type ClubData } from "@/data/clubs";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
@@ -101,7 +99,6 @@ export function ClubDetail() {
               </CardContent>
             </Card>
           )}
-          {FEATURES.aiRecommend && id && <ClubQaCard clubId={id} />}
           </aside>
         </main>
       </div>
