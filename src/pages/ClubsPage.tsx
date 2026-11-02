@@ -3,8 +3,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Check, LayoutGrid, List } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { AiRecommendationPanel } from "@/components/clubs/AiRecommendationPanel";
-import { FEATURES } from "@/config/features";
 import { cn } from "@/lib/utils";
 import { formatRecruitmentLabel } from "@/lib/date";
 import { mapClubResponse, type ClubData } from "@/data/clubs";
@@ -121,11 +119,7 @@ export function ClubsPage() {
 
   return (
     <div className="dream-directory mx-auto w-full pb-16 sm:pb-20">
-      <div className="flex flex-col gap-6 sm:gap-8">
-        {FEATURES.aiRecommend && (
-          <AiRecommendationPanel onOpenClub={(clubId) => navigate(`/club/${clubId}`)} />
-        )}
-        <div className="flex flex-col gap-6 rounded-2xl bg-muted/45 px-3 py-6 sm:gap-8 sm:px-6 sm:py-8">
+      <div className="flex flex-col gap-6 rounded-2xl bg-muted/45 px-3 py-6 sm:gap-8 sm:px-6 sm:py-8">
         {/* 섹션 헤더 + 뷰 전환 */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           {/* 관리자 '신청서 관리' 제목과 같은 구성: 제목 + 총 개수 알약 */}
@@ -285,7 +279,6 @@ export function ClubsPage() {
             ))}
           </ul>
         )}
-        </div>
       </div>
     </div>
   );

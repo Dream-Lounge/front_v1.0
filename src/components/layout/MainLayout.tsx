@@ -1,10 +1,13 @@
 import { Outlet } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { AiRecommendChatbot } from "@/components/chatbot/AiRecommendChatbot";
+import { FEATURES } from "@/config/features";
 
 /**
  * 헤더와 푸터를 포함하는 기본 레이아웃
  * - 일반 페이지 (홈, 동아리 상세, 지원서 등)에 사용
+ * - AI 추천을 켜면 오른쪽 아래에 플로팅 챗봇을 둔다.
  */
 export function MainLayout() {
   return (
@@ -14,6 +17,7 @@ export function MainLayout() {
         <Outlet />
       </main>
       <Footer />
+      {FEATURES.aiRecommend && <AiRecommendChatbot />}
     </>
   );
 }

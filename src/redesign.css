@@ -162,6 +162,43 @@ button:disabled { cursor: not-allowed; }
 @media(max-width:374px) {
  .dream-nav a { font-size: .8125rem; padding: 8px 4px; }
 }
+/* ===== AI 동아리 추천 플로팅 버튼 =====
+   기본: 진한 파랑 알약 / 축소: 원형 아이콘 / 호버: 밝은 파랑 + 은은한 빛 / 첫 방문 안내 말풍선 */
+.dream-ai-fab { position: fixed; right: 16px; bottom: 16px; z-index: 50; isolation: isolate; display: inline-flex; align-items: center; justify-content: center; gap: 10px; border-radius: 9999px; color: #fff; background: linear-gradient(135deg, #2b7ff0 0%, #0d5fd8 55%, #0a4bb4 100%); box-shadow: 0 10px 24px -8px rgba(10, 75, 180, .6); transition: box-shadow .2s ease, transform .2s ease; }
+.dream-ai-fab::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: linear-gradient(135deg, #6db4ff 0%, #3b8ff7 60%, #2f7ef0 100%); opacity: 0; transition: opacity .2s ease; }
+.dream-ai-fab:hover::before, .dream-ai-fab:focus-visible::before { opacity: 1; }
+.dream-ai-fab:hover, .dream-ai-fab:focus-visible { box-shadow: 0 0 0 3px rgba(109, 180, 255, .22), 0 10px 22px -8px rgba(59, 143, 247, .6); }
+.dream-ai-fab:focus-visible { outline: 2px solid #fff; outline-offset: -4px; }
+.dream-ai-fab:active { transform: scale(.97); }
+.dream-ai-fab-robot { width: 34px; height: 34px; flex-shrink: 0; }
+.dream-ai-fab-label { font-size: 1.0625rem; font-weight: 700; letter-spacing: -.02em; white-space: nowrap; }
+.dream-ai-fab-arrow { width: 20px; height: 20px; flex-shrink: 0; transition: transform .2s ease; }
+.dream-ai-fab:hover .dream-ai-fab-arrow { transform: translateX(3px); }
+.dream-ai-fab-signal { position: absolute; top: -12px; right: -10px; width: 18px; height: 18px; color: #2b7ff0; display: none; }
+/* 원형(아이콘만) */
+.dream-ai-fab--icon { width: 60px; height: 60px; padding: 0; }
+/* 반응형: 모바일은 원형 + 신호 표시, 640px 이상은 알약 */
+.dream-ai-fab--responsive { width: 60px; height: 60px; padding: 0; }
+.dream-ai-fab--responsive .dream-ai-fab-label, .dream-ai-fab--responsive .dream-ai-fab-arrow { display: none; }
+.dream-ai-fab--responsive .dream-ai-fab-signal { display: block; }
+.dream-ai-fab--responsive .dream-ai-fab-robot { width: 38px; height: 38px; }
+@media(min-width:640px) {
+ .dream-ai-fab { right: 24px; bottom: 24px; }
+ .dream-ai-fab--responsive { width: auto; height: 60px; padding: 0 22px 0 14px; }
+ .dream-ai-fab--responsive .dream-ai-fab-label, .dream-ai-fab--responsive .dream-ai-fab-arrow { display: block; }
+ .dream-ai-fab--responsive .dream-ai-fab-signal { display: none; }
+ .dream-ai-fab--responsive .dream-ai-fab-robot { width: 34px; height: 34px; }
+}
+.dream-ai-avatar { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; border-radius: 9999px; background: linear-gradient(135deg, #2b7ff0 0%, #0a4bb4 100%); }
+.dream-ai-tip { position: fixed; right: 16px; bottom: 92px; z-index: 50; display: flex; align-items: flex-start; gap: 8px; max-width: 260px; padding: 12px 36px 12px 14px; border: 1.5px solid #bcd7fb; border-radius: 16px; background: #fff; box-shadow: 0 10px 28px -10px rgba(13, 95, 216, .35); font-size: .9375rem; font-weight: 700; line-height: 1.45; color: #151719; animation: dream-ai-tip-in .3s ease both; }
+.dream-ai-tip::after { content: ""; position: absolute; right: 24px; bottom: -8px; width: 14px; height: 14px; background: #fff; border-right: 1.5px solid #bcd7fb; border-bottom: 1.5px solid #bcd7fb; transform: rotate(45deg); border-bottom-right-radius: 3px; }
+.dream-ai-tip-close { position: absolute; top: 8px; right: 8px; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 9999px; color: #8a9099; }
+.dream-ai-tip-close:hover { background: #f1f4f8; color: #151719; }
+@media(min-width:640px) {
+ .dream-ai-tip { right: 24px; bottom: 100px; }
+ .dream-ai-tip::after { right: 40px; }
+}
+@keyframes dream-ai-tip-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @media(prefers-reduced-motion:reduce) {
  *,*::before,*::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
