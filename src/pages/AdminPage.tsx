@@ -1294,14 +1294,14 @@ export function AdminPage() {
   const createCommunityPost = async () => {
     if (!selectedClubId || !postTitle.trim() || !postContent.trim()) return;
     try {
-      await api.createClubPost(selectedClubId, postTitle.trim(), postContent.trim());
+      await api.createClubPost(selectedClubId, postTitle.trim(), postContent.trim(), true);
       setCommunityPosts(await api.getClubPosts(selectedClubId));
       setPostTitle("");
       setPostContent("");
       setIsPostDialogOpen(false);
-      toast.success("게시글을 등록했습니다.");
+      toast.success("공지를 등록했습니다.");
     } catch (error) {
-      toastApiError(error, "게시글 등록에 실패했습니다.");
+      toastApiError(error, "공지 등록에 실패했습니다.");
     }
   };
 
