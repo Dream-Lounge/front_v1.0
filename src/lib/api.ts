@@ -1,3 +1,5 @@
+import { withEffectiveRecruitmentStatus } from "@/lib/recruitment";
+
 export const API_BASE_URL = import.meta.env.VITE_API_URL;
 const API_TIMEOUT_MS = 30_000;
 const PRIVACY_POLICY_VERSION = "2026-10-21";
@@ -142,9 +144,10 @@ export interface RecommendationResponse {
 export interface RecommendationQAResponse {
   supported: boolean;
   answer: string;
+  answer_source?: "evidence" | "llm";
   club_id: string | null;
   evidence: string[];
-  model_info: { model: string; backend: string };
+  model_info: { model: string; backend: string; llm_model?: string };
   intent: string;
   confidence: number;
   suggested_questions: string[];
@@ -652,11 +655,12 @@ class ApiClient {
     }, false);
   }
 
-  getClubs(search?: string): Promise<ClubResponse[]> {
+  async getClubs(search?: string): Promise<ClubResponse[]> {
     const query = search?.trim()
       ? `?search=${encodeURIComponent(search.trim())}`
       : "";
-    return this.request<ClubResponse[]>(`/clubs${query}`, {}, false);
+    const clubs = await this.request<ClubResponse[]>(`/clubs${query}`, {}, false);
+    return clubs.map((club) => withEffectiveRecruitmentStatus(club));
   }
 
   recommendClubs(query: string, topK = 5): Promise<RecommendationResponse> {
@@ -689,13 +693,14 @@ class ApiClient {
     );
   }
 
-  getClub(clubId: string, fresh = false): Promise<ClubResponse> {
+  async getClub(clubId: string, fresh = false): Promise<ClubResponse> {
     const path = `/clubs/${encodeURIComponent(clubId)}`;
-    return this.request<ClubResponse>(
+    const club = await this.request<ClubResponse>(
       fresh ? `${path}?_fresh=${Date.now()}` : path,
       fresh ? { cache: "no-store" } : {},
       false,
     );
+    return withEffectiveRecruitmentStatus(club);
   }
 
   getClubForm(clubId: string): Promise<ApplicationFormResponse> {
@@ -706,15 +711,17 @@ class ApiClient {
     return this.request<ActiveClubItem[]>("/me/clubs");
   }
 
-  createClub(data: ClubWriteRequest & { name: string }): Promise<ClubResponse> {
-    return this.request<ClubResponse>("/clubs", { method: "POST", body: JSON.stringify(data) });
+  async createClub(data: ClubWriteRequest & { name: string }): Promise<ClubResponse> {
+    const club = await this.request<ClubResponse>("/clubs", { method: "POST", body: JSON.stringify(data) });
+    return withEffectiveRecruitmentStatus(club);
   }
 
-  updateClub(clubId: string, data: ClubWriteRequest): Promise<ClubResponse> {
-    return this.request<ClubResponse>(`/clubs/${encodeURIComponent(clubId)}`, {
+  async updateClub(clubId: string, data: ClubWriteRequest): Promise<ClubResponse> {
+    const club = await this.request<ClubResponse>(`/clubs/${encodeURIComponent(clubId)}`, {
       method: "PATCH",
       body: JSON.stringify(data),
     });
+    return withEffectiveRecruitmentStatus(club);
   }
 
   async uploadClubImage(clubId: string | null, file: File): Promise<string> {
